@@ -19,7 +19,6 @@ fn main() -> io::Result<()>{
     reader.rewind()?;
     reader.read_to_end(&mut buffer)?;
     
-
     // Chip-8 puts programs in memory at 0x200
     let mut pc: usize = 0x200;
 
@@ -31,6 +30,17 @@ fn main() -> io::Result<()>{
     }
 
     Ok(())
+}
+
+struct Chip8State {
+    v: [u8; 16],
+    i: u16,
+    sp: u16,
+    pc: u16,
+    delay: u8,
+    sound: u8,
+    memory: u8,
+    screen: u8,
 }
 
 fn disassemble(code_buffer: &Vec<u8>, pc: usize) {
@@ -56,6 +66,7 @@ fn disassemble(code_buffer: &Vec<u8>, pc: usize) {
         0x09 => print!("9 not handled yet"),
         0x0a => {
             let address_i: u8 = code0 & 0x0f;
+            print!("{:-10} I,#${:01x}{:02x}", "MVI", address_i, code1);
         },
         0x0b => print!("b not handled yet"),
         0x0c => print!("c not handled yet"),
