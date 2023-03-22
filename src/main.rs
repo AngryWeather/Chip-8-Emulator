@@ -39,8 +39,22 @@ struct Chip8State {
     pc: u16,
     delay: u8,
     sound: u8,
-    memory: u8,
+    memory: [u8; 1024 * 4],
     screen: u8,
+}
+
+impl Chip8State {
+    fn new(memory: [u8; 1024 * 4], v: [u8;16], i: u16, delay: u8, sound: u8) -> Self {Chip8State {
+        memory,
+        screen: memory[0xf00],
+        sp: 0xfa0,
+        pc: 0x200,
+        v,
+        i,
+        delay,
+        sound,
+        }
+    }
 }
 
 fn disassemble(code_buffer: &Vec<u8>, pc: usize) {
@@ -49,20 +63,38 @@ fn disassemble(code_buffer: &Vec<u8>, pc: usize) {
     let first_nib = code0 >> 4;
 
     print!("{:x} {:x} {:x} ", pc, code0, code1);
+    println!("\n\nFirst nib: {:x}", first_nib);
 
     match first_nib {
-        0x00 => print!("0 not handled yet"),
-        0x01 => print!("1 not handled yet"),
-        0x02 => print!("2 not handled yet"),
-        0x03 => print!("3 not handled yet"),
-        0x04 => print!("4 not handled yet"),
-        0x05 => print!("5 not handled yet"),
-        0x06 => {
-            let reg: u8 = code0 & 0x0f;
-            print!("{:-10} V{:01x},#${:02x}", "MVI", reg, code1);
+        0x00 => {
+            match code1 {
+                0xe0 => print!("{:-10}", "CLS"),
+                0xee => print!("{:-10}", "RTS"),
+                _ => print!("Unknown 0"),
+            }
         },
-        0x07 => print!("7 not handled yet"),
-        0x08 => print!("8 not handled yet"),
+        0x01 => print!("{:-10} ${:01x}{:02x}", "JUMP", code0 & 0xf, code1),
+        0x02 => print!("{:-10} ${:01x}{:02x}", "CALL", code0 & 0xf, code1),
+        0x03 => print!("{:-10} V{:01x},#${:02x}", "SKIP.EQ", code0 & 0xf, code1),
+        0x04 => print!("{:-10} V{:01x},#${:02x}", "SKIP.NE", code0 & 0xf, code1),
+        0x05 => print!("{:-10} V{:01x},V{:01x}", "SKIP.EQ", code0 & 0xf, code1 >> 4),
+        0x06 => print!("{:-10} V{:01x},#${:02x}", "MVI", code0 & 0xf, code1),
+        0x07 => print!("{:-10} V{:01x},#{:02x}", "ADI", code0 & 0xf, code1),
+        0x08 => {
+            let last_nib: u8 = code1 & 0xf;
+            match last_nib {
+                0x0 => print!("{:-10} V{:01x},V{:01x}", "MOV", code0 & 0xf, code1 & 0xf),
+                0x1 => print!("{:-10} V{:01x},V{:01x}", "OR", code0 & 0xf, code1 & 0x0f),
+                0x2 => print!("{:-10} V{:01x},V{:01x}", "AND", code0 & 0xf, code1 & 0x0f),
+                0x3 => print!("{:-10} V{:01x},V{:01x}", "XOR", code0 & 0xf, code1 & 0x0f),
+                0x4 => print!("{:-10} V{:01x},V{:01x}", "ADD", code0 & 0xf, code1 & 0x0f),
+                0x5 => print!("{:-10} V{:01x},V{:01x}", "SUB", code0 & 0xf, code1 & 0x0f),
+                0x6 => print!("{:-10} V{:01x},V{:01x}", "SHR", code0 & 0xf, code1 & 0x0f),
+                0x7 => print!("{:-10} V{:01x},V{:01x}", "SUBN", code0 & 0xf, code1 & 0x0f),
+                0xe => print!("{:-10} V{:01x},V{:01x}", "SHL", code0 & 0xf, code1 & 0x0f),
+                _ => print!("Unknown 8")
+            }
+        }
         0x09 => print!("9 not handled yet"),
         0x0a => {
             let address_i: u8 = code0 & 0x0f;
