@@ -120,7 +120,7 @@ fn disassemble(code_buffer: &Vec<u8>, pc: usize) {
                 0x29 => print!("{:-10} I,V{:01x}", "SPRITECHAR", code0 & 0x0f),
                 0x33 => print!("{:-10} (I),V{:01x}", "MOVBCD", code0 & 0x0f),
                 0x55 => print!("{:-10} I,V0-V{:01x}", "MOVM", code0 & 0x0f),
-                0x65 => print!("{:-10} V0-V{:01x},(I)", "MOVM", code0 & 0x0f)
+                0x65 => print!("{:-10} V0-V{:01x},(I)", "MOVM", code0 & 0x0f),
                 _ => print!("Unknown f")
             }
         },
