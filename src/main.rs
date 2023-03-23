@@ -63,7 +63,6 @@ fn disassemble(code_buffer: &Vec<u8>, pc: usize) {
     let first_nib = code0 >> 4;
 
     print!("{:x} {:x} {:x} ", pc, code0, code1);
-    println!("\n\nFirst nib: {:x}", first_nib);
 
     match first_nib {
         0x00 => {
