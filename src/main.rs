@@ -83,28 +83,47 @@ fn disassemble(code_buffer: &Vec<u8>, pc: usize) {
         0x08 => {
             let last_nib: u8 = code1 & 0xf;
             match last_nib {
-                0x0 => print!("{:-10} V{:01x},V{:01x}", "MOV", code0 & 0xf, code1 & 0xf),
-                0x1 => print!("{:-10} V{:01x},V{:01x}", "OR", code0 & 0xf, code1 & 0x0f),
-                0x2 => print!("{:-10} V{:01x},V{:01x}", "AND", code0 & 0xf, code1 & 0x0f),
-                0x3 => print!("{:-10} V{:01x},V{:01x}", "XOR", code0 & 0xf, code1 & 0x0f),
-                0x4 => print!("{:-10} V{:01x},V{:01x}", "ADD", code0 & 0xf, code1 & 0x0f),
-                0x5 => print!("{:-10} V{:01x},V{:01x}", "SUB", code0 & 0xf, code1 & 0x0f),
-                0x6 => print!("{:-10} V{:01x},V{:01x}", "SHR", code0 & 0xf, code1 & 0x0f),
-                0x7 => print!("{:-10} V{:01x},V{:01x}", "SUBN", code0 & 0xf, code1 & 0x0f),
-                0xe => print!("{:-10} V{:01x},V{:01x}", "SHL", code0 & 0xf, code1 & 0x0f),
+                0x0 => print!("{:-10} V{:01x},V{:01x}", "MOV.", code0 & 0xf, code1 & 0xf),
+                0x1 => print!("{:-10} V{:01x},V{:01x}", "OR.", code0 & 0xf, code1 & 0x0f),
+                0x2 => print!("{:-10} V{:01x},V{:01x}", "AND.", code0 & 0xf, code1 & 0x0f),
+                0x3 => print!("{:-10} V{:01x},V{:01x}", "XOR.", code0 & 0xf, code1 & 0x0f),
+                0x4 => print!("{:-10} V{:01x},V{:01x}", "ADD.", code0 & 0xf, code1 & 0x0f),
+                0x5 => print!("{:-10} V{:01x},V{:01x}", "SUB.", code0 & 0xf, code1 & 0x0f),
+                0x6 => print!("{:-10} V{:01x},V{:01x}", "SHR.", code0 & 0xf, code1 & 0x0f),
+                0x7 => print!("{:-10} V{:01x},V{:01x}", "SUBN.", code0 & 0xf, code1 & 0x0f),
+                0xe => print!("{:-10} V{:01x},V{:01x}", "SHL.", code0 & 0xf, code1 & 0x0f),
                 _ => print!("Unknown 8")
             }
         }
-        0x09 => print!("9 not handled yet"),
+        0x09 => print!("{:-10} V{:01x},V{:01x}", "SKIP.NE", code0 & 0xf, code1 & 0x0f),
         0x0a => {
             let address_i: u8 = code0 & 0x0f;
             print!("{:-10} I,#${:01x}{:02x}", "MVI", address_i, code1);
         },
-        0x0b => print!("b not handled yet"),
-        0x0c => print!("c not handled yet"),
-        0x0d => print!("d not handled yet"),
-        0x0e => print!("e not handled yet"),
-        0x0f => print!("f not handled yet"),
+        0x0b => print!("{:-10} I,#${:01x}{:02x}(V0)", "JUMP", code0 & 0xf, code1),
+        0x0c => print!("{:-10} V{:01x}, #${:02x}", "RNDMSK", code0 & 0xf, code1),
+        0x0d => print!("{:-10} V{:01x}, V{:01x}, #${:01x}", "SPRITE", code0 & 0xf, code1 >> 4, code1 & 0xf),
+        0x0e => {
+            match code1 {
+                0x9e => print!("{:-10} V{:01x}", "SKIPKEY.Y", code0 & 0xf),
+                0xa1 => print!("{:-10} V{:01x}", "SKIPKEY.N", code0 & 0x0f),
+                _ => print!("Unknown e")
+            }
+        },
+        0x0f => {
+            match code1 {
+                0x07 => print!("{:-10} V{:01x}, DELAY", "MOV", code0 & 0xf),
+                0x0a => print!("{:-10} V{:01x}", "KEY", code0 & 0x0f),
+                0x15 => print!("{:-10} DELAY,V{:01x}", "MOV", code0 & 0x0f),
+                0x18 => print!("{:-10} SOUND, V{:01x}", "MOV", code0 * 0x0f),
+                0x1e => print!("{:-10} I,V{:01x}", "ADI", code0 & 0x0f),
+                0x29 => print!("{:-10} I,V{:01x}", "SPRITECHAR", code0 & 0x0f),
+                0x33 => print!("{:-10} (I),V{:01x}", "MOVBCD", code0 & 0x0f),
+                0x55 => print!("{:-10} I,V0-V{:01x}", "MOVM", code0 & 0x0f),
+                0x65 => print!("{:-10} V0-V{:01x},(I)", "MOVM", code0 & 0x0f)
+                _ => print!("Unknown f")
+            }
+        },
         _ => print!("wrong input"),
     }
 
