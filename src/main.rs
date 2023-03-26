@@ -22,15 +22,15 @@ fn main() -> io::Result<()>{
     reader.read_to_end(&mut buffer)?;
     
     // Chip-8 puts programs in memory at 0x200
-    let mut pc: usize = 0x200;
+    let mut pc: usize = 0x00;
 
     // Read.
-    // while (pc as u64) < f_size {
-    //     disassemble(&buffer, pc);
-    //     pc += 2;
-    //     print!("\n");
-    // }
-    draw();
+    while (pc as u64) < f_size {
+        disassemble(&buffer, pc);
+        pc += 2;
+        print!("\n");
+    }
+    // draw();
     Ok(())
 }
 
@@ -38,7 +38,7 @@ fn draw() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("rust-sdl2 demo", 800, 600)
+    let window = video_subsystem.window("chip-8 emulator", 64, 32)
         .position_centered()
         .build()
         .unwrap();
