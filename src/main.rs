@@ -22,14 +22,19 @@ fn main() -> io::Result<()>{
     reader.read_to_end(&mut buffer)?;
     
     // Chip-8 puts programs in memory at 0x200
-    let mut pc: usize = 0x00;
+
+    let mut chip8 = Chip8State::new([0;1024*4], [0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7,
+        0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf], 0x0, 0x0, 0x0);
+
+    chip8.memory[0x0 .. (0x0 + &buffer.len())].copy_from_slice(&buffer[..]);
 
     // Read.
-    while (pc as u64) < f_size {
-        disassemble(&buffer, pc);
-        pc += 2;
+    while (chip8.pc as u64) < f_size {
+        disassemble(chip8.memory, chip8.pc as usize);
+        chip8.pc += 2;
         print!("\n");
     }
+   
     // draw();
     Ok(())
 }
@@ -76,7 +81,7 @@ impl Chip8State {
         memory,
         screen: memory[0xf00],
         sp: 0xfa0,
-        pc: 0x200,
+        pc: 0x000,
         v,
         i,
         delay,
@@ -85,7 +90,7 @@ impl Chip8State {
     }
 }
 
-fn disassemble(code_buffer: &Vec<u8>, pc: usize) {
+fn disassemble(code_buffer:[u8; 4096], pc: usize) {
     let code0 = &code_buffer[pc];
     let code1 = &code_buffer[pc + 1];
     let first_nib = code0 >> 4;
@@ -95,7 +100,10 @@ fn disassemble(code_buffer: &Vec<u8>, pc: usize) {
     match first_nib {
         0x00 => {
             match code1 {
-                0xe0 => print!("{:-10}", "CLS"),
+                0xe0 => {
+                    print!("{:-10}", "CLS");
+                    
+                },
                 0xee => print!("{:-10}", "RTS"),
                 _ => print!("Unknown 0"),
             }
