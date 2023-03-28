@@ -10,6 +10,17 @@ use std::io::SeekFrom;
 use std::io::Seek;
 
 fn main() -> io::Result<()>{
+
+    // let sdl_context = sdl2::init().unwrap();
+    // let video_subsystem = sdl_context.video().unwrap();
+
+    // let window = video_subsystem.window("chip-8 emulator", 64, 32)
+    //     .position_centered()
+    //     .build()
+    //     .unwrap();
+
+    // let mut event_pump = sdl_context.event_pump().unwrap();
+    // let mut canvas = window.into_canvas().build().unwrap();
     let args: Vec<String> = env::args().collect();
     let file_path = &args[1];
 
@@ -23,19 +34,34 @@ fn main() -> io::Result<()>{
     
     // Chip-8 puts programs in memory at 0x200
 
-    let mut chip8 = Chip8State::new([0;1024*4], [0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7,
+    let mut chip8 = Chip8State::new([0;1024*4], [0;1024*4], 
+        [0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7,
         0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf], 0x0, 0x0, 0x0);
 
-    chip8.memory[0x0 .. (0x0 + &buffer.len())].copy_from_slice(&buffer[..]);
+    
+
+    chip8.memory[0x200 .. (0x200 + &buffer.len())].copy_from_slice(&buffer[..]);
+    // chip8.screen[0xf00 .. chip8.memory.len()].copy_from_slice(&chip8.memory);
+
+    // 'running: loop {
+    //     canvas.set_draw_color(Color::RGB(255,255,255));
+    //     canvas.clear();
+    //     for event in event_pump.poll_iter() {
+    //         match event {
+    //             Event::Quit{..} => break 'running,
+    //             _ => {},
+    //         }
+    //     }
+    //     canvas.present();
+    // }
 
     // Read.
-    while (chip8.pc as u64) < f_size {
-        disassemble(chip8.memory, chip8.pc as usize);
+    while (chip8.pc) < 0x200 + buffer.len() as u16{
+        disassemble(&chip8.memory, &chip8);
         chip8.pc += 2;
         print!("\n");
     }
    
-    // draw();
     Ok(())
 }
 
@@ -50,9 +76,11 @@ fn draw() {
 
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut canvas = window.into_canvas().build().unwrap();
+    // canvas.set_scale(20.0, 20.0).unwrap();
+ 
 
     'running: loop {
-        canvas.set_draw_color(Color::RGB(40, 64, 255 - 40));
+        canvas.set_draw_color(Color::RGB(0,0,0));
         canvas.clear();
         for event in event_pump.poll_iter() {
             match event {
@@ -73,24 +101,26 @@ struct Chip8State {
     delay: u8,
     sound: u8,
     memory: [u8; 1024 * 4],
-    screen: u8,
+    screen: [u8; 1024 * 4],
 }
 
 impl Chip8State {
-    fn new(memory: [u8; 1024 * 4], v: [u8;16], i: u16, delay: u8, sound: u8) -> Self {Chip8State {
-        memory,
-        screen: memory[0xf00],
-        sp: 0xfa0,
-        pc: 0x000,
-        v,
-        i,
-        delay,
-        sound,
+    fn new(memory: [u8; 1024 * 4], screen: [u8; 1024 * 4], 
+        v: [u8;16], i: u16, delay: u8, sound: u8) -> Self {Chip8State {
+            memory,
+            screen,
+            sp: 0x0,
+            pc: 0x200,
+            v,
+            i: 0x0,
+            delay,
+            sound,
         }
     }
 }
 
-fn disassemble(code_buffer:[u8; 4096], pc: usize) {
+fn disassemble(code_buffer: &[u8; 4096], chip8: &Chip8State) {
+    let pc = chip8.pc as usize;
     let code0 = &code_buffer[pc];
     let code1 = &code_buffer[pc + 1];
     let first_nib = code0 >> 4;
@@ -102,7 +132,6 @@ fn disassemble(code_buffer:[u8; 4096], pc: usize) {
             match code1 {
                 0xe0 => {
                     print!("{:-10}", "CLS");
-                    
                 },
                 0xee => print!("{:-10}", "RTS"),
                 _ => print!("Unknown 0"),
