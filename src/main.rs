@@ -46,7 +46,7 @@ fn main() -> io::Result<()>{
     // texture.update(None, &chip8.screen, 8);
 
     'running: loop {
-        canvas.set_draw_color(Color::RGB(255,255,255));
+        canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
         for event in event_pump.poll_iter() {
             match event {
@@ -173,7 +173,16 @@ fn disassemble(chip8: &mut Chip8State) {
         },
         0x0b => print!("{:-10} I,#${:01x}{:02x}(V0)", "JUMP", code0 & 0xf, code1),
         0x0c => print!("{:-10} V{:01x}, #${:02x}", "RNDMSK", code0 & 0xf, code1),
-        0x0d => print!("{:-10} V{:01x}, V{:01x}, #${:01x}", "SPRITE", code0 & 0xf, code1 >> 4, code1 & 0xf),
+        0x0d => {
+            print!("{:-10} V{:01x}, V{:01x}, #${:01x}", "SPRITE", code0 & 0xf, code1 >> 4, code1 & 0xf);
+            let addr = chip8.memory[chip8.i as usize];
+
+            for x in chip8.i..chip8.i + 0xf {
+                println!("\nbyte is: {:0x}", chip8.memory[x as usize]);
+            }
+            println!("\naddr: {:x}", addr);
+            println!("\n{:?}", chip8.screen);
+        },
         0x0e => {
             match code1 {
                 0x9e => print!("{:-10} V{:01x}", "SKIPKEY.Y", code0 & 0xf),
