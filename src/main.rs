@@ -177,8 +177,29 @@ fn disassemble(chip8: &mut Chip8State) {
             print!("{:-10} V{:01x}, V{:01x}, #${:01x}", "SPRITE", code0 & 0xf, code1 >> 4, code1 & 0xf);
             let addr = chip8.memory[chip8.i as usize];
 
+            let width: u8 = 64;
+            let height: u8 = 32;
+            let mut v_x = chip8.v[(code0 & 0xf) as usize];
+            let mut v_y = chip8.v[(code1 >> 4) as usize];
+            println!("vx: {v_x}");
+
             for x in chip8.i..chip8.i + 0xf {
-                println!("\nbyte is: {:0x}", chip8.memory[x as usize]);
+                let mut byte = chip8.memory[x as usize];
+                println!("\nbyte is: {:0x}", byte);
+                let mut i: usize = 0;
+
+                while i < 8 {
+                    let pixel = (byte & 0x80) >> 7;
+                    // println!("\npixel: {pixel}");
+                    byte = byte << 1;
+                    i += 1;
+
+                    chip8.screen[(v_x as u16 + width as u16 * v_y as u16) as usize] = pixel;
+                    v_x += 1;
+
+                }
+                v_x = chip8.v[(code0 & 0xf) as usize];
+                v_y += 1;
             }
             println!("\naddr: {:x}", addr);
             println!("\n{:?}", chip8.screen);
