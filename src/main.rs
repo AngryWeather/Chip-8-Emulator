@@ -2,6 +2,9 @@ extern crate sdl2;
 use sdl2::event::Event;
 use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
+use sdl2::render::Canvas;
+use sdl2::render::Texture;
+use sdl2::video::Window;
 use std::env;
 use std::io;
 use std::fs::File;
@@ -15,36 +18,36 @@ fn main() -> io::Result<()>{
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("chip-8 emulator", 64, 32)
+    let window = video_subsystem.window("chip8-8 emulator", 64, 32)
         .position_centered()
         .build()
         .unwrap();
 
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut canvas = window.into_canvas().build().unwrap();
-    let creator = canvas.texture_creator();
-    let mut texture = creator
-       .create_texture_target(PixelFormatEnum::RGB24, 64, 32).unwrap();
+        let creator = canvas.texture_creator();
+        let mut texture = creator
+        .create_texture_target(PixelFormatEnum::RGB888, 64, 32).unwrap();
 
-    let args: Vec<String> = env::args().collect();
-    let file_path = &args[1];
+        let args: Vec<String> = env::args().collect();
+        let file_path = &args[1];
 
-    let f = File::open(file_path)?;
-    let mut reader = BufReader::new(f);
-    let mut buffer: Vec<u8> = Vec::new();
-    
-    let f_size = reader.seek(SeekFrom::End(0))?;
-    reader.rewind()?;
-    reader.read_to_end(&mut buffer)?;
-    
-    // Chip-8 puts programs in memory at 0x200
+        let f = File::open(file_path)?;
+        let mut reader = BufReader::new(f);
+        let mut buffer: Vec<u8> = Vec::new();
+        
+        let f_size = reader.seek(SeekFrom::End(0))?;
+        reader.rewind()?;
+        reader.read_to_end(&mut buffer)?;
+        
+        // chip8-8 puts programs in memory at 0x200
 
-    let mut chip8 = Chip8State::new([0;1024*4], [0; 64 * 32], 
-        [0; 16], 0x0, 0x0, 0x0);    
+        let mut chip8 = Chip8State::new([0;1024*4], [0; 64 * 32], 
+            [0; 16], 0x0, 0x0, 0x0);    
 
-    chip8.memory[0x200 .. (0x200 + &buffer.len())].copy_from_slice(&buffer[..]);
-    // texture.update(None, &chip8.screen, 8);
-
+        chip8.memory[0x200 .. (0x200 + &buffer.len())].copy_from_slice(&buffer[..]);
+        // texture.update(None, &chip8.screen, 8);
+// // 
     'running: loop {
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
@@ -55,14 +58,21 @@ fn main() -> io::Result<()>{
             }
         }
         canvas.present();
+        while (chip8.pc) < 0x200 + buffer.len() as u16{
+            disassemble(&mut chip8, &mut canvas, &mut texture);
+            chip8.pc += 2;
+            print!("\n"); 
+            ::std::thread::sleep(std::time::Duration::new(0, 1000000000));
+        }
     }
 
     // Read.
-    while (chip8.pc) < 0x200 + buffer.len() as u16{
-        disassemble(&mut chip8);
-        chip8.pc += 2;
-        print!("\n");
-    }
+    // while (chip8.pc) < 0x200 + buffer.len() as u16{
+    //     disassemble(&mut chip8, &mut canvas, &mut texture);
+    //     chip8.pc += 2;
+    //     print!("\n");
+        
+    // }
    
     Ok(())
 }
@@ -121,7 +131,7 @@ impl Chip8State {
     }
 }
 
-fn disassemble(chip8: &mut Chip8State) {
+fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mut Texture) {
     let pc = chip8.pc as usize;
     let code0 = &chip8.memory[pc];
     let code1 = &chip8.memory[pc + 1];
@@ -134,6 +144,11 @@ fn disassemble(chip8: &mut Chip8State) {
             match code1 {
                 0xe0 => {
                     print!("{:-10}", "CLS");
+                    chip8.screen.fill(0);
+                    println!("{:?}", chip8.screen);
+                    canvas.clear();
+                    texture.update(None, &chip8.screen, 8).unwrap();
+                    canvas.present();
                 },
                 0xee => print!("{:-10}", "RTS"),
                 _ => print!("Unknown 0"),
@@ -149,7 +164,11 @@ fn disassemble(chip8: &mut Chip8State) {
             chip8.v[(code0 & 0xf) as usize] = *code1;
             println!("\n{:0x?}", chip8.v);
         },
-        0x07 => print!("{:-10} V{:01x},#{:02x}", "ADI", code0 & 0xf, code1),
+        0x07 => {
+            print!("{:-10} V{:01x},#{:02x}", "ADI", code0 & 0xf, code1);
+            chip8.v[(code0 & 0x0f) as usize] = chip8.v[(code0 & 0x0f) as usize] + code1;
+            println!("{:x?}", chip8.v);
+        },
         0x08 => {
             let last_nib: u8 = code1 & 0xf;
             match last_nib {
@@ -167,7 +186,8 @@ fn disassemble(chip8: &mut Chip8State) {
         }
         0x09 => print!("{:-10} V{:01x},V{:01x}", "SKIP.NE", code0 & 0xf, code1 & 0x0f),
         0x0a => {
-            chip8.i = 0x22a;
+            chip8.i = ((code0 & 0xf) as u16) << 8 | (*code1) as u16; 
+            println!("chip8.i: {:x}", chip8.i);
             let address_i: u8 = code0 & 0x0f;
             print!("{:-10} I,#${:01x}{:02x}", "MVI", address_i, code1);
         },
@@ -181,27 +201,38 @@ fn disassemble(chip8: &mut Chip8State) {
             let height: u8 = 32;
             let mut v_x = chip8.v[(code0 & 0xf) as usize];
             let mut v_y = chip8.v[(code1 >> 4) as usize];
-            println!("vx: {v_x}");
+            let num_of_bytes = code1 & 0xf;
 
-            for x in chip8.i..chip8.i + 0xf {
+            for x in chip8.i..chip8.i + num_of_bytes as u16 {
                 let mut byte = chip8.memory[x as usize];
-                println!("\nbyte is: {:0x}", byte);
                 let mut i: usize = 0;
 
                 while i < 8 {
                     let pixel = (byte & 0x80) >> 7;
-                    // println!("\npixel: {pixel}");
                     byte = byte << 1;
                     i += 1;
 
-                    chip8.screen[(v_x as u16 + width as u16 * v_y as u16) as usize] = pixel;
+                    chip8.screen[(v_x as u16 + (width as u16 * v_y as u16) as u16) as usize] = pixel;
+
+                    if pixel == 0 {
+                       texture.set_color_mod(0, 0, 0);
+                    } else {
+                       texture.set_color_mod(1, 0, 1);
+                    }
+
+                    canvas.clear();
+                    texture.update(None, &chip8.screen, 8).unwrap();
+                    canvas.copy(texture, None, None).unwrap();
+                    // canvas.copy(texture, None, None).unwrap();
+                    canvas.present();
                     v_x += 1;
 
+                        }
+                    
+                        v_x = chip8.v[(code0 & 0xf) as usize];
+                        v_y += 1;
                 }
-                v_x = chip8.v[(code0 & 0xf) as usize];
-                v_y += 1;
-            }
-            println!("\naddr: {:x}", addr);
+                println!("\naddr: {:x}", addr);
             println!("\n{:?}", chip8.screen);
         },
         0x0e => {
@@ -213,7 +244,10 @@ fn disassemble(chip8: &mut Chip8State) {
         },
         0x0f => {
             match code1 {
-                0x07 => print!("{:-10} V{:01x}, DELAY", "MOV", code0 & 0xf),
+                0x07 => { 
+                    print!("{:-10} V{:01x}, DELAY", "MOV", code0 & 0xf);
+                    
+                },
                 0x0a => print!("{:-10} V{:01x}", "KEY", code0 & 0x0f),
                 0x15 => print!("{:-10} DELAY,V{:01x}", "MOV", code0 & 0x0f),
                 0x18 => print!("{:-10} SOUND, V{:01x}", "MOV", code0 * 0x0f),
