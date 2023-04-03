@@ -1,6 +1,8 @@
 extern crate sdl2;
 use sdl2::event::Event;
+use sdl2::libc::SCTP_STREAM_RESET_INCOMING;
 use sdl2::pixels::Color;
+use sdl2::pixels::PixelFormat;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::render::Canvas;
 use sdl2::render::Texture;
@@ -25,9 +27,13 @@ fn main() -> io::Result<()>{
 
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut canvas = window.into_canvas().build().unwrap();
+
+
         let creator = canvas.texture_creator();
         let mut texture = creator
-        .create_texture_target(PixelFormatEnum::RGB888, 64, 32).unwrap();
+        .create_texture_target(PixelFormatEnum::RGB24, 64, 32).unwrap();
+    // canvas.set_scale(10.0, 10.0);
+
 
         let args: Vec<String> = env::args().collect();
         let file_path = &args[1];
@@ -49,7 +55,7 @@ fn main() -> io::Result<()>{
         // texture.update(None, &chip8.screen, 8);
 // // 
     'running: loop {
-        canvas.set_draw_color(Color::RGB(0, 0, 0));
+        // canvas.set_draw_color(Color::RGB(1, 1, 1));
         canvas.clear();
         for event in event_pump.poll_iter() {
             match event {
@@ -62,7 +68,7 @@ fn main() -> io::Result<()>{
             disassemble(&mut chip8, &mut canvas, &mut texture);
             chip8.pc += 2;
             print!("\n"); 
-            ::std::thread::sleep(std::time::Duration::new(0, 1000000000));
+            ::std::thread::sleep(std::time::Duration::new(0, 100000000));
         }
     }
 
@@ -92,7 +98,7 @@ fn draw() {
  
 
     'running: loop {
-        canvas.set_draw_color(Color::RGB(0,0,0));
+        canvas.set_draw_color(Color::RGB(1,1,1));
         canvas.clear();
         for event in event_pump.poll_iter() {
             match event {
@@ -145,16 +151,23 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 0xe0 => {
                     print!("{:-10}", "CLS");
                     chip8.screen.fill(0);
-                    println!("{:?}", chip8.screen);
+                    // println!("{:?}", chip8.screen);
                     canvas.clear();
-                    texture.update(None, &chip8.screen, 8).unwrap();
+                    // println!("texture: {:?}", canvas.read_pixels(None, PixelFormatEnum::RGB888));
+                    // println!("{:?}", canvas.output_size());
+                    // canvas.read_pixels(None, PixelFormatEnum::RGB888);
+                    texture.update(None, &chip8.screen, 64).unwrap();
+                    canvas.copy(texture, None, None).unwrap();
                     canvas.present();
                 },
                 0xee => print!("{:-10}", "RTS"),
                 _ => print!("Unknown 0"),
             }
         },
-        0x01 => print!("{:-10} ${:01x}{:02x}", "JUMP", code0 & 0xf, code1),
+        0x01 => {
+            print!("{:-10} ${:01x}{:02x}", "JUMP", code0 & 0xf, code1);
+            // chip8.pc = (*code0 as u16) << 8 | *code1 as u16;
+        },
         0x02 => print!("{:-10} ${:01x}{:02x}", "CALL", code0 & 0xf, code1),
         0x03 => print!("{:-10} V{:01x},#${:02x}", "SKIP.EQ", code0 & 0xf, code1),
         0x04 => print!("{:-10} V{:01x},#${:02x}", "SKIP.NE", code0 & 0xf, code1),
@@ -212,19 +225,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     byte = byte << 1;
                     i += 1;
 
-                    chip8.screen[(v_x as u16 + (width as u16 * v_y as u16) as u16) as usize] = pixel;
+                    chip8.screen[(v_x as u16 + (width as u16 * v_y as u16) as u16) as usize] = (chip8.screen[(v_x as u16 + (width as u16 * v_y as u16) as u16) as usize] ^ pixel) * 255;
 
-                    if pixel == 0 {
-                       texture.set_color_mod(0, 0, 0);
-                    } else {
-                       texture.set_color_mod(1, 0, 1);
-                    }
-
-                    canvas.clear();
-                    texture.update(None, &chip8.screen, 8).unwrap();
-                    canvas.copy(texture, None, None).unwrap();
-                    // canvas.copy(texture, None, None).unwrap();
-                    canvas.present();
                     v_x += 1;
 
                         }
@@ -233,7 +235,14 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                         v_y += 1;
                 }
                 println!("\naddr: {:x}", addr);
-            println!("\n{:?}", chip8.screen);
+                     canvas.clear();
+                    texture.update(None, &chip8.screen, 64).unwrap();
+                    canvas.copy(texture, None, None).unwrap();
+                    canvas.present();      
+
+                    // println!("texture: {:?}", canvas.read_pixels(None, PixelFormatEnum::RGB888));
+                    // println!("\n{:?}", chip8.screen);
+
         },
         0x0e => {
             match code1 {
