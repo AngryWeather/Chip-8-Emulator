@@ -20,7 +20,7 @@ fn main() -> io::Result<()>{
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("chip8-8 emulator", 64, 32)
+    let window = video_subsystem.window("chip8-8 emulator",640, 320)
         .position_centered()
         .build()
         .unwrap();
@@ -32,7 +32,7 @@ fn main() -> io::Result<()>{
         let creator = canvas.texture_creator();
         let mut texture = creator
         .create_texture_target(PixelFormatEnum::RGB24, 64, 32).unwrap();
-    // canvas.set_scale(10.0, 10.0);
+        canvas.set_scale(10.0, 10.0).unwrap();
 
 
         let args: Vec<String> = env::args().collect();
@@ -47,8 +47,7 @@ fn main() -> io::Result<()>{
         reader.read_to_end(&mut buffer)?;
         
         // chip8-8 puts programs in memory at 0x200
-
-        let mut chip8 = Chip8State::new([0;1024*4], [0; 64 * 32], 
+        let mut chip8 = Chip8State::new([0;1024*4], [0; 64 * 32 * 3], 
             [0; 16], 0x0, 0x0, 0x0);    
 
         chip8.memory[0x200 .. (0x200 + &buffer.len())].copy_from_slice(&buffer[..]);
@@ -68,7 +67,7 @@ fn main() -> io::Result<()>{
             disassemble(&mut chip8, &mut canvas, &mut texture);
             chip8.pc += 2;
             print!("\n"); 
-            ::std::thread::sleep(std::time::Duration::new(0, 100000000));
+            ::std::thread::sleep(std::time::Duration::new(0, 1000000000));
         }
     }
 
@@ -87,26 +86,26 @@ fn draw() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("chip-8 emulator", 64, 32)
+    let window = video_subsystem.window("chip-8 emulator", 164, 132)
         .position_centered()
         .build()
         .unwrap();
 
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut canvas = window.into_canvas().build().unwrap();
-    // canvas.set_scale(20.0, 20.0).unwrap();
+    canvas.set_scale(10.0, 10.0).unwrap();
  
 
     'running: loop {
-        canvas.set_draw_color(Color::RGB(1,1,1));
-        canvas.clear();
+        // canvas.set_draw_color(Color::RGB(1,1,1));
+        // canvas.clear();
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit{..} => break 'running,
                 _ => {},
             }
         }
-        canvas.present();
+        // canvas.present();
     }
 
 }
@@ -119,11 +118,11 @@ struct Chip8State {
     delay: u8,
     sound: u8,
     memory: [u8; 1024 * 4],
-    screen: [u8; 64 * 32],
+    screen: [u8; 64 * 32 * 3],
 }
 
 impl Chip8State {
-    fn new(memory: [u8; 1024 * 4], screen:  [u8; 64 * 32], 
+    fn new(memory: [u8; 1024 * 4], screen:  [u8; 64 * 32 * 3], 
         v: [u8;16], i: u16, delay: u8, sound: u8) -> Self {Chip8State {
             memory,
             screen,
@@ -166,7 +165,7 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
         },
         0x01 => {
             print!("{:-10} ${:01x}{:02x}", "JUMP", code0 & 0xf, code1);
-            // chip8.pc = (*code0 as u16) << 8 | *code1 as u16;
+            chip8.pc = (*code0 as u16) << 8 | *code1 as u16;
         },
         0x02 => print!("{:-10} ${:01x}{:02x}", "CALL", code0 & 0xf, code1),
         0x03 => print!("{:-10} V{:01x},#${:02x}", "SKIP.EQ", code0 & 0xf, code1),
@@ -216,6 +215,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             let mut v_y = chip8.v[(code1 >> 4) as usize];
             let num_of_bytes = code1 & 0xf;
 
+            let color: u8;
+
             for x in chip8.i..chip8.i + num_of_bytes as u16 {
                 let mut byte = chip8.memory[x as usize];
                 let mut i: usize = 0;
@@ -224,10 +225,18 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     let pixel = (byte & 0x80) >> 7;
                     byte = byte << 1;
                     i += 1;
+                    let r = (v_x as u16 + (width as u16 * v_y as u16) as u16) as usize;
+                    let g = ((v_x + 1) as u16 + (width as u16 * v_y as u16) as u16) as usize;
+                    let b = ((v_x + 2) as u16 + (width as u16 * v_y as u16) as u16) as usize;
+                    let color: u8 = if pixel == 1 {255} else {0};
 
-                    chip8.screen[(v_x as u16 + (width as u16 * v_y as u16) as u16) as usize] = (chip8.screen[(v_x as u16 + (width as u16 * v_y as u16) as u16) as usize] ^ pixel) * 255;
+                    chip8.screen[r] = chip8.screen[r] ^ color;
+                    chip8.screen[g] = chip8.screen[g] ^ color;
+                    chip8.screen[b] = chip8.screen[b] ^ color;
+                    // chip8.screen[(v_x as u16 + (width as u16 * v_y as u16) as u16) as usize] = (chip8.screen[(v_x as u16 + 
+                    //     (width as u16 * v_y as u16) as u16) as usize] ^ color);
 
-                    v_x += 1;
+                    v_x += 3;
 
                         }
                     
