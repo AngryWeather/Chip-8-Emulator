@@ -82,34 +82,6 @@ fn main() -> io::Result<()>{
     Ok(())
 }
 
-fn draw() {
-    let sdl_context = sdl2::init().unwrap();
-    let video_subsystem = sdl_context.video().unwrap();
-
-    let window = video_subsystem.window("chip-8 emulator", 164, 132)
-        .position_centered()
-        .build()
-        .unwrap();
-
-    let mut event_pump = sdl_context.event_pump().unwrap();
-    let mut canvas = window.into_canvas().build().unwrap();
-    canvas.set_scale(10.0, 10.0).unwrap();
- 
-
-    'running: loop {
-        // canvas.set_draw_color(Color::RGB(1,1,1));
-        // canvas.clear();
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::Quit{..} => break 'running,
-                _ => {},
-            }
-        }
-        // canvas.present();
-    }
-
-}
-
 struct Chip8State {
     v: [u8; 16],
     i: u16,
@@ -206,13 +178,13 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
         0x0b => print!("{:-10} I,#${:01x}{:02x}(V0)", "JUMP", code0 & 0xf, code1),
         0x0c => print!("{:-10} V{:01x}, #${:02x}", "RNDMSK", code0 & 0xf, code1),
         0x0d => {
-            print!("{:-10} V{:01x}, V{:01x}, #${:01x}", "SPRITE", code0 & 0xf, code1 >> 4, code1 & 0xf);
+            print!("{:-10} V{:01x}, V{:01x}, #${}", "SPRITE", code0 & 0xf, code1 >> 4, code1 & 0xf);
             let addr = chip8.memory[chip8.i as usize];
 
             let width: u8 = 64;
             let height: u8 = 32;
-            let mut v_x = chip8.v[(code0 & 0xf) as usize];
-            let mut v_y = chip8.v[(code1 >> 4) as usize];
+            let mut v_x = chip8.v[(code0 & 0xf) as usize] % 64;
+            let mut v_y = chip8.v[(code1 >> 4) as usize] % 32;
             let num_of_bytes = code1 & 0xf;
 
             let color: u8;
@@ -221,21 +193,26 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 let mut byte = chip8.memory[x as usize];
                 let mut i: usize = 0;
 
+                // println!("x: {:x?}", x);
+
                 while i < 8 {
                     let pixel = (byte & 0x80) >> 7;
                     byte = byte << 1;
                     i += 1;
                     let r = (v_x as u16 + (width as u16 * v_y as u16) as u16) as usize;
-                    let g = ((v_x + 1) as u16 + (width as u16 * v_y as u16) as u16) as usize;
-                    let b = ((v_x + 2) as u16 + (width as u16 * v_y as u16) as u16) as usize;
+                    let g = ((v_x) as u16 + (width as u16 * v_y as u16) as u16) as usize;
+                    let b = ((v_x) as u16 + (width as u16 * v_y as u16) as u16) as usize;
                     let color: u8 = if pixel == 1 {255} else {0};
-
+                    
                     chip8.screen[r] = chip8.screen[r] ^ color;
-                    chip8.screen[g] = chip8.screen[g] ^ color;
-                    chip8.screen[b] = chip8.screen[b] ^ color;
+                    chip8.screen[r + 1] = chip8.screen[r + 1] ^ color;
+                    chip8.screen[r+2] = chip8.screen[r+2] ^ color;
                     // chip8.screen[(v_x as u16 + (width as u16 * v_y as u16) as u16) as usize] = (chip8.screen[(v_x as u16 + 
                     //     (width as u16 * v_y as u16) as u16) as usize] ^ color);
 
+
+                    // println!("v_x: {v_x}");
+                    // println!("v_y: {v_y}");
                     v_x += 3;
 
                         }
@@ -243,13 +220,14 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                         v_x = chip8.v[(code0 & 0xf) as usize];
                         v_y += 1;
                 }
-                println!("\naddr: {:x}", addr);
-                     canvas.clear();
-                    texture.update(None, &chip8.screen, 64).unwrap();
-                    canvas.copy(texture, None, None).unwrap();
-                    canvas.present();      
 
-                    // println!("texture: {:?}", canvas.read_pixels(None, PixelFormatEnum::RGB888));
+                // println!("\naddr: {:x}", addr);
+                canvas.clear();
+                texture.update(None, &chip8.screen, 64).unwrap();
+                canvas.copy(texture, None, None).unwrap();
+                canvas.present();      
+
+                println!("canvas size: {:?}", texture.query())
                     // println!("\n{:?}", chip8.screen);
 
         },
