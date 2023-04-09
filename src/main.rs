@@ -1,8 +1,5 @@
 extern crate sdl2;
 use sdl2::event::Event;
-use sdl2::libc::SCTP_STREAM_RESET_INCOMING;
-use sdl2::pixels::Color;
-use sdl2::pixels::PixelFormat;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::render::Canvas;
 use sdl2::render::Texture;
@@ -20,20 +17,18 @@ fn main() -> io::Result<()>{
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("chip8-8 emulator",640, 320)
+    let window = video_subsystem.window("chip8-emulator",640, 320)
         .position_centered()
         .build()
         .unwrap();
 
-    let mut event_pump = sdl_context.event_pump().unwrap();
-    let mut canvas = window.into_canvas().build().unwrap();
-
+        let mut event_pump = sdl_context.event_pump().unwrap();
+        let mut canvas = window.into_canvas().build().unwrap();
 
         let creator = canvas.texture_creator();
+        canvas.set_scale(10.0, 10.0).unwrap();
         let mut texture = creator
         .create_texture_target(PixelFormatEnum::RGB24, 64, 32).unwrap();
-        canvas.set_scale(10.0, 10.0).unwrap();
-
 
         let args: Vec<String> = env::args().collect();
         let file_path = &args[1];
@@ -51,10 +46,9 @@ fn main() -> io::Result<()>{
             [0; 16], 0x0, 0x0, 0x0);    
 
         chip8.memory[0x200 .. (0x200 + &buffer.len())].copy_from_slice(&buffer[..]);
-        // texture.update(None, &chip8.screen, 8);
-// // 
+
     'running: loop {
-        // canvas.set_draw_color(Color::RGB(1, 1, 1));
+        canvas.set_draw_color(sdl2::pixels::Color::BLACK);
         canvas.clear();
         for event in event_pump.poll_iter() {
             match event {
@@ -62,7 +56,6 @@ fn main() -> io::Result<()>{
                 _ => {},
             }
         }
-        canvas.present();
         while (chip8.pc) < 0x200 + buffer.len() as u16{
             disassemble(&mut chip8, &mut canvas, &mut texture);
             chip8.pc += 2;
@@ -71,14 +64,6 @@ fn main() -> io::Result<()>{
         }
     }
 
-    // Read.
-    // while (chip8.pc) < 0x200 + buffer.len() as u16{
-    //     disassemble(&mut chip8, &mut canvas, &mut texture);
-    //     chip8.pc += 2;
-    //     print!("\n");
-        
-    // }
-   
     Ok(())
 }
 
@@ -122,13 +107,9 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 0xe0 => {
                     print!("{:-10}", "CLS");
                     chip8.screen.fill(0);
-                    // println!("{:?}", chip8.screen);
                     canvas.clear();
-                    // println!("texture: {:?}", canvas.read_pixels(None, PixelFormatEnum::RGB888));
-                    // println!("{:?}", canvas.output_size());
-                    // canvas.read_pixels(None, PixelFormatEnum::RGB888);
-                    texture.update(None, &chip8.screen, 64).unwrap();
-                    canvas.copy(texture, None, None).unwrap();
+                    texture.update(None, &chip8.screen, 64 * 4).unwrap();
+                    canvas.copy(&texture, None, None).unwrap();
                     canvas.present();
                 },
                 0xee => print!("{:-10}", "RTS"),
@@ -190,46 +171,38 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             let color: u8;
 
             for x in chip8.i..chip8.i + num_of_bytes as u16 {
+                println!("x: {:x}", x);
                 let mut byte = chip8.memory[x as usize];
+                println!("byte: {:x}", byte);
                 let mut i: usize = 0;
-
-                // println!("x: {:x?}", x);
+                println!("new byte");
 
                 while i < 8 {
                     let pixel = (byte & 0x80) >> 7;
                     byte = byte << 1;
                     i += 1;
-                    let r = (v_x as u16 + (width as u16 * v_y as u16) as u16) as usize;
-                    let g = ((v_x) as u16 + (width as u16 * v_y as u16) as u16) as usize;
-                    let b = ((v_x) as u16 + (width as u16 * v_y as u16) as u16) as usize;
-                    let color: u8 = if pixel == 1 {255} else {0};
+
+                    let (r, g, b) = if pixel == 1 {sdl2::pixels::Color::WHITE.rgb()} 
+                        else {sdl2::pixels::Color::BLACK.rgb()};
                     
-                    chip8.screen[r] = chip8.screen[r] ^ color;
-                    chip8.screen[r + 1] = chip8.screen[r + 1] ^ color;
-                    chip8.screen[r+2] = chip8.screen[r+2] ^ color;
-                    // chip8.screen[(v_x as u16 + (width as u16 * v_y as u16) as u16) as usize] = (chip8.screen[(v_x as u16 + 
-                    //     (width as u16 * v_y as u16) as u16) as usize] ^ color);
-
-
-                    // println!("v_x: {v_x}");
-                    // println!("v_y: {v_y}");
-                    v_x += 3;
+                    println!("vx: {v_x}, vy: {v_y}");
+                    let index = (v_y as usize * (width * 3) as usize) as usize + ( v_x * 3) as usize;
+                    println!("index: {index}");
+                    chip8.screen[index] ^= r;
+                    chip8.screen[index + 1] ^= g;
+                    chip8.screen[index + 2] ^= b;
+                    v_x += 1;
 
                         }
-                    
-                        v_x = chip8.v[(code0 & 0xf) as usize];
+
+                        v_x = chip8.v[(code0 & 0xf) as usize] % 64;
                         v_y += 1;
                 }
-
-                // println!("\naddr: {:x}", addr);
+                
                 canvas.clear();
-                texture.update(None, &chip8.screen, 64).unwrap();
-                canvas.copy(texture, None, None).unwrap();
+                texture.update(None, &chip8.screen, 64 * 3).unwrap();
+                canvas.copy(&texture, None, None).unwrap();
                 canvas.present();      
-
-                println!("canvas size: {:?}", texture.query())
-                    // println!("\n{:?}", chip8.screen);
-
         },
         0x0e => {
             match code1 {
