@@ -30,6 +30,8 @@ fn main() -> io::Result<()>{
         let mut texture = creator
         .create_texture_target(PixelFormatEnum::RGB24, 64, 32).unwrap();
 
+        canvas.set_draw_color(sdl2::pixels::Color::BLACK);
+
         let args: Vec<String> = env::args().collect();
         let file_path = &args[1];
 
@@ -48,7 +50,6 @@ fn main() -> io::Result<()>{
         chip8.memory[0x200 .. (0x200 + &buffer.len())].copy_from_slice(&buffer[..]);
 
     'running: loop {
-        canvas.set_draw_color(sdl2::pixels::Color::BLACK);
         canvas.clear();
         for event in event_pump.poll_iter() {
             match event {
@@ -57,6 +58,7 @@ fn main() -> io::Result<()>{
             }
         }
         while (chip8.pc) < 0x200 + buffer.len() as u16{
+            println!("pc out: {:x}", &chip8.pc);
             disassemble(&mut chip8, &mut canvas, &mut texture);
             chip8.pc += 2;
             print!("\n"); 
@@ -118,10 +120,18 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
         },
         0x01 => {
             print!("{:-10} ${:01x}{:02x}", "JUMP", code0 & 0xf, code1);
-            chip8.pc = (*code0 as u16) << 8 | *code1 as u16;
+            chip8.pc = ((*code0 & 0xf) as u16) << 8 | *code1 as u16;
+            println!("pc: {:x}", &chip8.pc);
+            disassemble(chip8, canvas, texture);
         },
         0x02 => print!("{:-10} ${:01x}{:02x}", "CALL", code0 & 0xf, code1),
-        0x03 => print!("{:-10} V{:01x},#${:02x}", "SKIP.EQ", code0 & 0xf, code1),
+        0x03 => {
+            print!("{:-10} V{:01x},#${:02x}", "SKIP.EQ", code0 & 0xf, code1);
+
+            if chip8.v[*code0 as usize & 0xf as usize] == *code1 {
+                chip8.pc += 2;
+            }
+        },
         0x04 => print!("{:-10} V{:01x},#${:02x}", "SKIP.NE", code0 & 0xf, code1),
         0x05 => print!("{:-10} V{:01x},V{:01x}", "SKIP.EQ", code0 & 0xf, code1 >> 4),
         0x06 => {
@@ -168,14 +178,9 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             let mut v_y = chip8.v[(code1 >> 4) as usize] % 32;
             let num_of_bytes = code1 & 0xf;
 
-            let color: u8;
-
             for x in chip8.i..chip8.i + num_of_bytes as u16 {
-                println!("x: {:x}", x);
                 let mut byte = chip8.memory[x as usize];
-                println!("byte: {:x}", byte);
                 let mut i: usize = 0;
-                println!("new byte");
 
                 while i < 8 {
                     let pixel = (byte & 0x80) >> 7;
@@ -185,18 +190,15 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     let (r, g, b) = if pixel == 1 {sdl2::pixels::Color::WHITE.rgb()} 
                         else {sdl2::pixels::Color::BLACK.rgb()};
                     
-                    println!("vx: {v_x}, vy: {v_y}");
                     let index = (v_y as usize * (width * 3) as usize) as usize + ( v_x * 3) as usize;
-                    println!("index: {index}");
                     chip8.screen[index] ^= r;
                     chip8.screen[index + 1] ^= g;
                     chip8.screen[index + 2] ^= b;
                     v_x += 1;
+                }
 
-                        }
-
-                        v_x = chip8.v[(code0 & 0xf) as usize] % 64;
-                        v_y += 1;
+                    v_x = chip8.v[(code0 & 0xf) as usize] % 64;
+                    v_y += 1;
                 }
                 
                 canvas.clear();
