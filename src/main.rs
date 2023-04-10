@@ -31,6 +31,7 @@ fn main() -> io::Result<()>{
         .create_texture_target(PixelFormatEnum::RGB24, 64, 32).unwrap();
 
         canvas.set_draw_color(sdl2::pixels::Color::BLACK);
+        canvas.clear();
 
         let args: Vec<String> = env::args().collect();
         let file_path = &args[1];
@@ -132,7 +133,12 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 chip8.pc += 2;
             }
         },
-        0x04 => print!("{:-10} V{:01x},#${:02x}", "SKIP.NE", code0 & 0xf, code1),
+        0x04 => {
+            print!("{:-10} V{:01x},#${:02x}", "SKIP.NE", code0 & 0xf, code1);
+            if chip8.v[(*code0 & 0xf) as usize] != *code1 {
+                chip8.pc += 2;
+            }
+        },
         0x05 => print!("{:-10} V{:01x},V{:01x}", "SKIP.EQ", code0 & 0xf, code1 >> 4),
         0x06 => {
             print!("{:-10} V{:01x},#${:02x}", "MVI", code0 & 0xf, code1);
@@ -141,7 +147,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
         },
         0x07 => {
             print!("{:-10} V{:01x},#{:02x}", "ADI", code0 & 0xf, code1);
-            chip8.v[(code0 & 0x0f) as usize] = chip8.v[(code0 & 0x0f) as usize] + code1;
+            // chip8.v[(code0 & 0x0f) as usize] = chip8.v[(code0 & 0x0f) as usize] + code1;
+            chip8.v[(code0 & 0x0f) as usize] = chip8.v[(code0 & 0x0f) as usize].overflowing_add(*code1).0;
             println!("{:x?}", chip8.v);
         },
         0x08 => {
