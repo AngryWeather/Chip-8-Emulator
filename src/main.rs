@@ -63,7 +63,7 @@ fn main() -> io::Result<()>{
             disassemble(&mut chip8, &mut canvas, &mut texture);
             chip8.pc += 2;
             print!("\n"); 
-            ::std::thread::sleep(std::time::Duration::new(0, 1000000000));
+            ::std::thread::sleep(std::time::Duration::new(0, 100000000));
         }
     }
 
@@ -79,6 +79,7 @@ struct Chip8State {
     sound: u8,
     memory: [u8; 1024 * 4],
     screen: [u8; 64 * 32 * 3],
+    stack: Vec<u16>,
 }
 
 impl Chip8State {
@@ -86,12 +87,13 @@ impl Chip8State {
         v: [u8;16], i: u16, delay: u8, sound: u8) -> Self {Chip8State {
             memory,
             screen,
-            sp: 0x0,
+            sp: 0,
             pc: 0x200,
             v,
             i: 0x0,
             delay,
             sound,
+            stack: Vec::with_capacity(16),
         }
     }
 }
@@ -115,7 +117,13 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     canvas.copy(&texture, None, None).unwrap();
                     canvas.present();
                 },
-                0xee => print!("{:-10}", "RTS"),
+                0xee => {
+                    print!("{:-10}", "RTS");
+                    chip8.pc = chip8.stack.pop().expect("chip8.stack should not be empty") + 2;
+                    chip8.sp -= 1;
+                    println!();
+                    disassemble(chip8, canvas, texture);
+                },
                 _ => print!("Unknown 0"),
             }
         },
@@ -125,7 +133,15 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             println!("pc: {:x}", &chip8.pc);
             disassemble(chip8, canvas, texture);
         },
-        0x02 => print!("{:-10} ${:01x}{:02x}", "CALL", code0 & 0xf, code1),
+        0x02 => {
+            print!("{:-10} ${:01x}{:02x}", "CALL", code0 & 0xf, code1);
+            chip8.sp += 1;
+            chip8.stack.push(chip8.pc);
+            let addr = ((code0 & 0xf) as u16) << 8 | *code1 as u16;
+            chip8.pc = addr;
+            println!();
+            disassemble(chip8, canvas, texture);
+        },
         0x03 => {
             print!("{:-10} V{:01x},#${:02x}", "SKIP.EQ", code0 & 0xf, code1);
 
@@ -139,7 +155,12 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 chip8.pc += 2;
             }
         },
-        0x05 => print!("{:-10} V{:01x},V{:01x}", "SKIP.EQ", code0 & 0xf, code1 >> 4),
+        0x05 => {
+            print!("{:-10} V{:01x},V{:01x}", "SKIP.EQ", code0 & 0xf, code1 >> 4);
+            if chip8.v[(code0 & 0xf) as usize] == chip8.v[(code1 >> 4) as usize] {
+                chip8.pc += 2;
+            }
+        },
         0x06 => {
             print!("{:-10} V{:01x},#${:02x}", "MVI", code0 & 0xf, code1);
             chip8.v[(code0 & 0xf) as usize] = *code1;
@@ -154,10 +175,22 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
         0x08 => {
             let last_nib: u8 = code1 & 0xf;
             match last_nib {
-                0x0 => print!("{:-10} V{:01x},V{:01x}", "MOV.", code0 & 0xf, code1 & 0xf),
-                0x1 => print!("{:-10} V{:01x},V{:01x}", "OR.", code0 & 0xf, code1 & 0x0f),
-                0x2 => print!("{:-10} V{:01x},V{:01x}", "AND.", code0 & 0xf, code1 & 0x0f),
-                0x3 => print!("{:-10} V{:01x},V{:01x}", "XOR.", code0 & 0xf, code1 & 0x0f),
+                0x0 => {
+                    print!("{:-10} V{:01x},V{:01x}", "MOV.", code0 & 0xf, code1 & 0xf);
+                    chip8.v[(code0 & 0xf) as usize] = chip8.v[(code1 >> 4) as usize];
+                },
+                0x1 => {
+                    print!("{:-10} V{:01x},V{:01x}", "OR.", code0 & 0xf, code1 & 0x0f);
+                    chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize] | chip8.v[(code1 >> 4) as usize]; 
+                },
+                0x2 => {
+                    print!("{:-10} V{:01x},V{:01x}", "AND.", code0 & 0xf, code1 & 0x0f);
+                    chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize] & chip8.v[(code1 >> 4) as usize]; 
+                },
+                0x3 => {
+                    print!("{:-10} V{:01x},V{:01x}", "XOR.", code0 & 0xf, code1 & 0x0f);
+                    chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize] ^ chip8.v[(code1 >> 4) as usize]; 
+                },
                 0x4 => print!("{:-10} V{:01x},V{:01x}", "ADD.", code0 & 0xf, code1 & 0x0f),
                 0x5 => print!("{:-10} V{:01x},V{:01x}", "SUB.", code0 & 0xf, code1 & 0x0f),
                 0x6 => print!("{:-10} V{:01x},V{:01x}", "SHR.", code0 & 0xf, code1 & 0x0f),
@@ -166,7 +199,12 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 _ => print!("Unknown 8")
             }
         }
-        0x09 => print!("{:-10} V{:01x},V{:01x}", "SKIP.NE", code0 & 0xf, code1 & 0x0f),
+        0x09 => {
+            print!("{:-10} V{:01x},V{:01x}", "SKIP.NE", code0 & 0xf, code1 & 0x0f);
+            if chip8.v[(code0 & 0xf) as usize] != chip8.v[(code1 >> 4) as usize] {
+                chip8.pc += 2;
+            }
+        },
         0x0a => {
             chip8.i = ((code0 & 0xf) as u16) << 8 | (*code1) as u16; 
             println!("chip8.i: {:x}", chip8.i);
