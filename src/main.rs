@@ -98,18 +98,16 @@ impl Chip8State {
     }
 }
 
-fn getCodes(chip8Mem: [u8; 4096], pc: usize) -> (u8, u8) {
-    let code0 = chip8Mem[pc];
-    let code1 = chip8Mem[pc + 1];
+fn get_codes(chip8_mem: [u8; 4096], pc: usize) -> (u8, u8) {
+    let code0 = chip8_mem[pc];
+    let code1 = chip8_mem[pc + 1];
     
     (code0, code1)
 }
 
 fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mut Texture) {
     let pc = chip8.pc as usize;
-    let (code0, code1) = getCodes(chip8.memory, pc);
-    // let code0 = &chip8.memory[pc];
-    // let code1 = &chip8.memory[pc + 1];
+    let (code0, code1) = get_codes(chip8.memory, pc);
     let first_nib = code0 >> 4;
 
     print!("{:x} {:x} {:x} ", pc, code0, code1);
@@ -325,11 +323,20 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 0x33 => print!("{:-10} (I),V{:01x}", "MOVBCD", code0 & 0x0f),
                 0x55 => {
                     print!("{:-10} I,V0-V{:01x}", "MOVM", code0 & 0x0f);
+                    println!("i: {:x}", &chip8.i);
+                    println!("v: {:?}", &chip8.v);
+                    println!("memory: {:?}", &chip8.memory);
                     chip8.memory[chip8.i as usize ..= (chip8.i as usize + (code0 & 0xf) as usize)].copy_from_slice(
                         &chip8.v[0..=(code0 & 0xf) as usize]
                     );
+                    println!("memory: {:?}", &chip8.memory);
                 },
-                0x65 => print!("{:-10} V0-V{:01x},(I)", "MOVM", code0 & 0x0f),
+                0x65 => {
+                    print!("{:-10} V0-V{:01x},(I)", "MOVM", code0 & 0x0f);
+                    chip8.v[0..=(code0 & 0xf) as usize].copy_from_slice(
+                        &chip8.memory[chip8.i as usize ..= (chip8.i as usize + (code0 & 0xf) as usize)]
+                    )
+                },
                 _ => print!("Unknown f")
             }
         },
