@@ -259,7 +259,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
         },
         0x0a => {
             chip8.i = ((code0 & 0xf) as u16) << 8 | (code1) as u16; 
-            println!("chip8.i: {:x}", chip8.i);
             let address_i: u8 = code0 & 0x0f;
             print!("{:-10} I,#${:01x}{:02x}", "MVI", address_i, code1);
         },
@@ -320,16 +319,27 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 0x18 => print!("{:-10} SOUND, V{:01x}", "MOV", code0 * 0x0f),
                 0x1e => print!("{:-10} I,V{:01x}", "ADI", code0 & 0x0f),
                 0x29 => print!("{:-10} I,V{:01x}", "SPRITECHAR", code0 & 0x0f),
-                0x33 => print!("{:-10} (I),V{:01x}", "MOVBCD", code0 & 0x0f),
+                0x33 => {
+                    print!("{:-10} (I),V{:01x}", "MOVBCD", code0 & 0x0f);
+                    let v_x = chip8.v[(code0 & 0xf) as usize];
+                    let mut num = v_x; 
+                    println!("num: {num}");
+                    // store digits of decimal value of v_x in I, I + 1, I + 2
+                    let ones = num % 10;
+                    num /= 10; 
+                    let tens = num % 10;
+                    num /= 10;
+                    let hundreds = num % 10;
+                    
+                    chip8.memory[chip8.i as usize] = hundreds;
+                    chip8.memory[(chip8.i + 1) as usize] = tens;
+                    chip8.memory[(chip8.i + 2) as usize] = ones;
+                },
                 0x55 => {
                     print!("{:-10} I,V0-V{:01x}", "MOVM", code0 & 0x0f);
-                    println!("i: {:x}", &chip8.i);
-                    println!("v: {:?}", &chip8.v);
-                    println!("memory: {:?}", &chip8.memory);
                     chip8.memory[chip8.i as usize ..= (chip8.i as usize + (code0 & 0xf) as usize)].copy_from_slice(
                         &chip8.v[0..=(code0 & 0xf) as usize]
                     );
-                    println!("memory: {:?}", &chip8.memory);
                 },
                 0x65 => {
                     print!("{:-10} V0-V{:01x},(I)", "MOVM", code0 & 0x0f);
