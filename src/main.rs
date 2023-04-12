@@ -1,7 +1,9 @@
 extern crate sdl2;
 use rand::Rng;
 use rand::thread_rng;
+use sdl2::EventPump;
 use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::render::Canvas;
 use sdl2::render::Texture;
@@ -62,7 +64,7 @@ fn main() -> io::Result<()>{
         }
         while (chip8.pc) < 0x200 + buffer.len() as u16{
             println!("pc out: {:x}", &chip8.pc);
-            disassemble(&mut chip8, &mut canvas, &mut texture);
+            disassemble(&mut chip8, &mut canvas, &mut texture, &mut event_pump);
             chip8.pc += 2;
             print!("\n"); 
             ::std::thread::sleep(std::time::Duration::new(0, 10000000));
@@ -107,7 +109,7 @@ fn get_codes(chip8_mem: [u8; 4096], pc: usize) -> (u8, u8) {
     (code0, code1)
 }
 
-fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mut Texture) {
+fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mut Texture, event_pump: &mut EventPump) {
     let pc = chip8.pc as usize;
     let (code0, code1) = get_codes(chip8.memory, pc);
     let first_nib = code0 >> 4;
@@ -140,7 +142,7 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             print!("{:-10} ${:01x}{:02x}", "JUMP", code0 & 0xf, code1);
             chip8.pc = (((code0 & 0xf) as u16) << 8 | code1 as u16);
             println!("pc: {:x}", &chip8.pc);
-            disassemble(chip8, canvas, texture);
+            disassemble(chip8, canvas, texture, event_pump);
         },
         0x02 => {
             print!("{:-10} ${:01x}{:02x}", "CALL", code0 & 0xf, code1);
@@ -148,7 +150,7 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             chip8.stack.push(chip8.pc);
             let addr = ((code0 & 0xf) as u16) << 8 | code1 as u16;
             chip8.pc = addr;
-            disassemble(chip8, canvas, texture);
+            disassemble(chip8, canvas, texture, event_pump);
         },
         0x03 => {
             print!("{:-10} V{:01x},#${:02x}", "SKIP.EQ", code0 & 0xf, code1);
@@ -321,7 +323,23 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 0x07 => { 
                     print!("{:-10} V{:01x}, DELAY", "MOV", code0 & 0xf);
                 },
-                0x0a => print!("{:-10} V{:01x}", "KEY", code0 & 0x0f),
+                0x0a => {
+                    print!("{:-10} V{:01x}", "KEY", code0 & 0x0f);
+                    // let key_pressed;
+
+                    for event in event_pump.poll_iter() {
+                        match event {
+                            Event::KeyDown {
+                                keycode: Some(Keycode::E),
+                                ..
+                            } => 
+                            break,
+                            _ => ()
+                        }
+                    } 
+                    
+                    println!("KEY: {:}", (Keycode::E));
+                }, 
                 0x15 => print!("{:-10} DELAY,V{:01x}", "MOV", code0 & 0x0f),
                 0x18 => print!("{:-10} SOUND, V{:01x}", "MOV", code0 * 0x0f),
                 0x1e => {
