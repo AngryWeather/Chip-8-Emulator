@@ -1,4 +1,6 @@
 extern crate sdl2;
+use rand::Rng;
+use rand::thread_rng;
 use sdl2::event::Event;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::render::Canvas;
@@ -63,7 +65,7 @@ fn main() -> io::Result<()>{
             disassemble(&mut chip8, &mut canvas, &mut texture);
             chip8.pc += 2;
             print!("\n"); 
-            ::std::thread::sleep(std::time::Duration::new(0, 100000000));
+            ::std::thread::sleep(std::time::Duration::new(0, 10000000));
         }
     }
 
@@ -125,17 +127,18 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 },
                 0xee => {
                     print!("{:-10}", "RTS");
-                    chip8.pc = chip8.stack.pop().expect("chip8.stack should not be empty") + 2;
+                    chip8.pc = chip8.stack.pop().expect("chip8.stack should not be empty");
                     chip8.sp -= 1;
                     println!();
-                    disassemble(chip8, canvas, texture);
+                    // chip8.pc -= 2;
+                    // disassemble(chip8, canvas, texture);
                 },
                 _ => print!("Unknown 0"),
             }
         },
         0x01 => {
             print!("{:-10} ${:01x}{:02x}", "JUMP", code0 & 0xf, code1);
-            chip8.pc = ((code0 & 0xf) as u16) << 8 | code1 as u16;
+            chip8.pc = (((code0 & 0xf) as u16) << 8 | code1 as u16);
             println!("pc: {:x}", &chip8.pc);
             disassemble(chip8, canvas, texture);
         },
@@ -263,7 +266,11 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             print!("{:-10} I,#${:01x}{:02x}", "MVI", address_i, code1);
         },
         0x0b => print!("{:-10} I,#${:01x}{:02x}(V0)", "JUMP", code0 & 0xf, code1),
-        0x0c => print!("{:-10} V{:01x}, #${:02x}", "RNDMSK", code0 & 0xf, code1),
+        0x0c => {
+            print!("{:-10} V{:01x}, #${:02x}", "RNDMSK", code0 & 0xf, code1);
+            let random_byte: u8 = rand::thread_rng().gen_range(0..=255);
+            chip8.v[(code0 & 0xf) as usize] = random_byte & code1;
+        },
         0x0d => {
             print!("{:-10} V{:01x}, V{:01x}, #${}", "SPRITE", code0 & 0xf, code1 >> 4, code1 & 0xf);
             let addr = chip8.memory[chip8.i as usize];
@@ -317,7 +324,10 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 0x0a => print!("{:-10} V{:01x}", "KEY", code0 & 0x0f),
                 0x15 => print!("{:-10} DELAY,V{:01x}", "MOV", code0 & 0x0f),
                 0x18 => print!("{:-10} SOUND, V{:01x}", "MOV", code0 * 0x0f),
-                0x1e => print!("{:-10} I,V{:01x}", "ADI", code0 & 0x0f),
+                0x1e => {
+                    print!("{:-10} I,V{:01x}", "ADI", code0 & 0x0f);
+                    chip8.i = chip8.i + chip8.v[(code0 & 0xf) as usize] as u16;
+                },
                 0x29 => print!("{:-10} I,V{:01x}", "SPRITECHAR", code0 & 0x0f),
                 0x33 => {
                     print!("{:-10} (I),V{:01x}", "MOVBCD", code0 & 0x0f);
