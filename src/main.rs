@@ -3,10 +3,14 @@ use rand::Rng;
 use rand::thread_rng;
 use sdl2::EventPump;
 use sdl2::event::Event;
+use sdl2::event::WindowEvent;
 use sdl2::keyboard::Keycode;
+use sdl2::keyboard::Scancode;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::render::Canvas;
 use sdl2::render::Texture;
+use sdl2::sys::KeySym;
+use sdl2::sys::SDL_QuitEvent;
 use sdl2::video::Window;
 use std::env;
 use std::io;
@@ -56,13 +60,22 @@ fn main() -> io::Result<()>{
 
     'running: loop {
         canvas.clear();
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::Quit{..} => break 'running,
-                _ => {},
-            }
-        }
+        // for event in event_pump.poll_iter() {
+        //     // if event {  WindowEvent::Close};
+
+            
+        //     match event {
+        //         Event::Quit{..} => WindowEvent::Close,
+        //         _ => WindowEvent::Shown,
+        //     };
+        // }
         while (chip8.pc) < 0x200 + buffer.len() as u16{
+            for event in event_pump.poll_iter() {
+                match event {
+                    Event::Quit {..} => break 'running,
+                    _ => {},
+                }
+            }
             println!("pc out: {:x}", &chip8.pc);
             disassemble(&mut chip8, &mut canvas, &mut texture, &mut event_pump);
             chip8.pc += 2;
@@ -325,20 +338,21 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 },
                 0x0a => {
                     print!("{:-10} V{:01x}", "KEY", code0 & 0x0f);
-                    // let key_pressed;
 
-                    for event in event_pump.poll_iter() {
-                        match event {
-                            Event::KeyDown {
-                                keycode: Some(Keycode::E),
-                                ..
-                            } => 
-                            break,
-                            _ => ()
+                    'running: loop {
+                        for event in event_pump.poll_iter() {
+                            let key = match event {
+                                Event::KeyDown {keycode: Some(Keycode::E), ..} => 6,
+                                _ => 0,
+                            };  
+
+                            if key != 0 {
+                                println!("\n\nKEY: {:x}\n", key);
+                                chip8.v[(code0 & 0xf) as usize] = key;
+                                break 'running;
+                            }
                         }
-                    } 
-                    
-                    println!("KEY: {:}", (Keycode::E));
+                    }
                 }, 
                 0x15 => print!("{:-10} DELAY,V{:01x}", "MOV", code0 & 0x0f),
                 0x18 => print!("{:-10} SOUND, V{:01x}", "MOV", code0 * 0x0f),
