@@ -20,6 +20,8 @@ use std::io::BufReader;
 use std::io::Read;
 use std::io::SeekFrom;
 use std::io::Seek;
+use std::time::Instant;
+use std::time::SystemTime;
 
 fn main() -> io::Result<()>{
 
@@ -70,7 +72,12 @@ fn main() -> io::Result<()>{
         //         _ => WindowEvent::Shown,
         //     };
         // }
+        let delta = 0; 
+
         while (chip8.pc) < 0x200 + buffer.len() as u16{
+            
+            let now = SystemTime::now();
+
             for event in event_pump.poll_iter() {
                 match event {
                     Event::Quit {..} => break 'running,
@@ -81,7 +88,9 @@ fn main() -> io::Result<()>{
             disassemble(&mut chip8, &mut canvas, &mut texture, &mut event_pump);
             chip8.pc += 2;
             print!("\n"); 
-            ::std::thread::sleep(std::time::Duration::new(0, 10000000));
+            // ::std::thread::sleep(std::time::Duration::new(0, 10000000));
+            let last_time = now.elapsed().unwrap();
+
         }
     }
 
@@ -315,9 +324,15 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                         else {sdl2::pixels::Color::BLACK.rgb()};
                     
                     let index = (v_y as usize * (width * 3) as usize) as usize + ( v_x * 3) as usize;
+                    
+                    // if (chip8.screen[index] == pixel * 255) {
+                    //     chip8.v[0xf] = 1;
+                    // }
+
                     chip8.screen[index] ^= r;
                     chip8.screen[index + 1] ^= g;
                     chip8.screen[index + 2] ^= b;
+                    
                     v_x += 1;
                 }
 
