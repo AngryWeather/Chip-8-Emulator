@@ -1,5 +1,6 @@
 extern crate sdl2;
 use rand::Rng;
+use rand::distributions::DistString;
 use rand::thread_rng;
 use sdl2::EventPump;
 use sdl2::event::Event;
@@ -253,7 +254,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                         chip8.v[0xf] = 0;
                     }
                     
-                    chip8.v[(code0 & 0xf) as usize] = chip8.v[(code1 >> 4) as usize] - chip8.v[(code0 & 0xf) as usize];
+                    // chip8.v[(code0 & 0xf) as usize] = chip8.v[(code1 >> 4) as usize] - chip8.v[(code0 & 0xf) as usize];
+                    chip8.v[(code0 & 0xf) as usize] = chip8.v[(code1 >> 4) as usize].overflowing_sub(chip8.v[(code0 & 0xf) as usize]).0;
                 },
                 0xe => {
                     print!("{:-10} V{:01x},V{:01x}", "SHL.", code0 & 0xf, code1 & 0x0f);
@@ -280,7 +282,11 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             let address_i: u8 = code0 & 0x0f;
             print!("{:-10} I,#${:01x}{:02x}", "MVI", address_i, code1);
         },
-        0x0b => print!("{:-10} I,#${:01x}{:02x}(V0)", "JUMP", code0 & 0xf, code1),
+        0x0b => {
+            print!("{:-10} I,#${:01x}{:02x}(V0)", "JUMP", code0 & 0xf, code1);
+            chip8.pc = (((code0 & 0xf) as u16) << 8 | code1 as u16) + chip8.v[0] as u16;
+            disassemble(chip8, canvas, texture, event_pump);
+        },
         0x0c => {
             print!("{:-10} V{:01x}, #${:02x}", "RNDMSK", code0 & 0xf, code1);
             let random_byte: u8 = rand::thread_rng().gen_range(0..=255);
@@ -326,8 +332,41 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
         },
         0x0e => {
             match code1 {
-                0x9e => print!("{:-10} V{:01x}", "SKIPKEY.Y", code0 & 0xf),
-                0xa1 => print!("{:-10} V{:01x}", "SKIPKEY.N", code0 & 0x0f),
+                0x9e => {
+                    print!("{:-10} v{:01x}", "skipkey.y", code0 & 0xf);
+                    for event in event_pump.poll_iter() {
+                        let key: u8 = match event {
+                            Event::KeyDown {keycode: Some(Keycode::A), ..} |
+                                Event::KeyDown {keycode: Some(Keycode::Left), ..} => 5,
+                            Event::KeyDown {keycode: Some(Keycode::E), ..} => 6,
+                            Event::KeyDown {keycode: Some(Keycode::W), ..} |
+                                Event::KeyDown {keycode: Some(Keycode::Up), ..} => 7,
+                            _ => 0,
+                        };  
+
+                    if key == chip8.v[(code0 & 0xf) as usize] {
+                        chip8.pc += 2;
+                    }
+                    }
+                    
+                },
+                0xa1 => {
+                    print!("{:-10} V{:01x}", "SKIPKEY.N", code0 & 0x0f);
+                    for event in event_pump.poll_iter() {
+                        let key: u8 = match event {
+                            Event::KeyDown {keycode: Some(Keycode::A), ..} |
+                                Event::KeyDown {keycode: Some(Keycode::Left), ..} => 5,
+                            Event::KeyDown {keycode: Some(Keycode::E), ..} => 6,
+                            Event::KeyDown {keycode: Some(Keycode::W), ..} |
+                                Event::KeyDown {keycode: Some(Keycode::Up), ..} => 7,
+                            _ => 0,
+                        };  
+
+                    if key != chip8.v[(code0 & 0xf) as usize] {
+                        chip8.pc += 2;
+                    }
+                    }
+                },
                 _ => print!("Unknown e")
             }
         },
@@ -335,6 +374,7 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             match code1 {
                 0x07 => { 
                     print!("{:-10} V{:01x}, DELAY", "MOV", code0 & 0xf);
+                    chip8.v[(code0 & 0xf) as usize] = chip8.delay;
                 },
                 0x0a => {
                     print!("{:-10} V{:01x}", "KEY", code0 & 0x0f);
@@ -342,7 +382,11 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     'running: loop {
                         for event in event_pump.poll_iter() {
                             let key = match event {
+                                Event::KeyDown {keycode: Some(Keycode::A), ..} |
+                                    Event::KeyDown {keycode: Some(Keycode::Left), ..} => 5,
                                 Event::KeyDown {keycode: Some(Keycode::E), ..} => 6,
+                                Event::KeyDown {keycode: Some(Keycode::W), ..} |
+                                    Event::KeyDown {keycode: Some(Keycode::Up), ..} => 7,
                                 _ => 0,
                             };  
 
@@ -354,13 +398,20 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                         }
                     }
                 }, 
-                0x15 => print!("{:-10} DELAY,V{:01x}", "MOV", code0 & 0x0f),
+                0x15 => {
+                    print!("{:-10} DELAY,V{:01x}", "MOV", code0 & 0x0f);
+                    chip8.delay = chip8.v[(code0 & 0xf) as usize];
+                    println!("\n\nDELAY: {}", chip8.delay);
+                },
                 0x18 => print!("{:-10} SOUND, V{:01x}", "MOV", code0 * 0x0f),
                 0x1e => {
                     print!("{:-10} I,V{:01x}", "ADI", code0 & 0x0f);
                     chip8.i = chip8.i + chip8.v[(code0 & 0xf) as usize] as u16;
                 },
-                0x29 => print!("{:-10} I,V{:01x}", "SPRITECHAR", code0 & 0x0f),
+                0x29 => {
+                    print!("{:-10} I,V{:01x}", "SPRITECHAR", code0 & 0x0f);
+                    chip8.i = chip8.v[(code0 & 0xf) as usize] as u16;
+                },
                 0x33 => {
                     print!("{:-10} (I),V{:01x}", "MOVBCD", code0 & 0x0f);
                     let v_x = chip8.v[(code0 & 0xf) as usize];
