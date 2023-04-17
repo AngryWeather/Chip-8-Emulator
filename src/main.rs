@@ -20,6 +20,7 @@ use std::io::BufReader;
 use std::io::Read;
 use std::io::SeekFrom;
 use std::io::Seek;
+use std::ops::AddAssign;
 use std::time::Instant;
 use std::time::SystemTime;
 
@@ -73,6 +74,9 @@ fn main() -> io::Result<()>{
         //     };
         // }
         let delta = 0; 
+        let mut accumulator: f32 = 0.0;
+        const delay_time: f32 = 16.7;
+        // let delay_in_nanos = 
 
         while (chip8.pc) < 0x200 + buffer.len() as u16{
             
@@ -87,9 +91,17 @@ fn main() -> io::Result<()>{
             disassemble(&mut chip8, &mut canvas, &mut texture, &mut event_pump);
             chip8.pc += 2;
             print!("\n"); 
-            // ::std::thread::sleep(std::time::Duration::new(0, 10000000));
-            let last_time = now.elapsed().unwrap();
-
+            let last_time = now.elapsed().unwrap().as_secs_f32();
+            accumulator += last_time;
+            println!("time: {:?}", accumulator);
+            
+            ::std::thread::sleep(std::time::Duration::new(0, accumulator as u32 * 60));
+            
+            if accumulator >=  delay_time {
+                chip8.delay -= 1;
+                accumulator -= delay_time;
+            }
+            
         }
     }
 
@@ -131,6 +143,7 @@ fn get_codes(chip8_mem: [u8; 4096], pc: usize) -> (u8, u8) {
     (code0, code1)
 }
 
+
 fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mut Texture, event_pump: &mut EventPump) {
     let pc = chip8.pc as usize;
     let (code0, code1) = get_codes(chip8.memory, pc);
@@ -145,7 +158,7 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     print!("{:-10}", "CLS");
                     chip8.screen.fill(0);
                     canvas.clear();
-                    texture.update(None, &chip8.screen, 64 * 4).unwrap();
+                    texture.update(None, &chip8.screen, 64 * 3).unwrap();
                     canvas.copy(&texture, None, None).unwrap();
                     canvas.present();
                 },
@@ -162,9 +175,10 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
         },
         0x01 => {
             print!("{:-10} ${:01x}{:02x}", "JUMP", code0 & 0xf, code1);
-            chip8.pc = (((code0 & 0xf) as u16) << 8 | code1 as u16);
+            chip8.pc = ((code0 & 0xf) as u16) << 8 | code1 as u16;
             println!("pc: {:x}", &chip8.pc);
-            disassemble(chip8, canvas, texture, event_pump);
+            chip8.pc -= 2;
+            // disassemble(chip8, canvas, texture, event_pump);
         },
         0x02 => {
             print!("{:-10} ${:01x}{:02x}", "CALL", code0 & 0xf, code1);
@@ -172,7 +186,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             chip8.stack.push(chip8.pc);
             let addr = ((code0 & 0xf) as u16) << 8 | code1 as u16;
             chip8.pc = addr;
-            disassemble(chip8, canvas, texture, event_pump);
+            chip8.pc -= 2;
+            // disassemble(chip8, canvas, texture, event_pump);
         },
         0x03 => {
             print!("{:-10} V{:01x},#${:02x}", "SKIP.EQ", code0 & 0xf, code1);
@@ -293,7 +308,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
         0x0b => {
             print!("{:-10} I,#${:01x}{:02x}(V0)", "JUMP", code0 & 0xf, code1);
             chip8.pc = (((code0 & 0xf) as u16) << 8 | code1 as u16) + chip8.v[0] as u16;
-            disassemble(chip8, canvas, texture, event_pump);
+            chip8.pc -= 2;
+            // disassemble(chip8, canvas, texture, event_pump);
         },
         0x0c => {
             print!("{:-10} V{:01x}, #${:02x}", "RNDMSK", code0 & 0xf, code1);
@@ -351,10 +367,10 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     for event in event_pump.poll_iter() {
                         let key: u8 = match event {
                             Event::KeyDown {keycode: Some(Keycode::A), ..} |
-                                Event::KeyDown {keycode: Some(Keycode::Left), ..} => 5,
-                            Event::KeyDown {keycode: Some(Keycode::E), ..} => 6,
+                                Event::KeyDown {keycode: Some(Keycode::Left), ..} => 8,
+                            // Event::KeyDown {keycode: Some(Keycode::E), ..} => 6,
                             Event::KeyDown {keycode: Some(Keycode::W), ..} |
-                                Event::KeyDown {keycode: Some(Keycode::Up), ..} => 7,
+                                Event::KeyDown {keycode: Some(Keycode::Up), ..} => 5,
                             _ => 0,
                         };  
 
@@ -369,10 +385,10 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     for event in event_pump.poll_iter() {
                         let key: u8 = match event {
                             Event::KeyDown {keycode: Some(Keycode::A), ..} |
-                                Event::KeyDown {keycode: Some(Keycode::Left), ..} => 5,
+                                Event::KeyDown {keycode: Some(Keycode::Left), ..} => 8,
                             Event::KeyDown {keycode: Some(Keycode::E), ..} => 6,
                             Event::KeyDown {keycode: Some(Keycode::W), ..} |
-                                Event::KeyDown {keycode: Some(Keycode::Up), ..} => 7,
+                                Event::KeyDown {keycode: Some(Keycode::Up), ..} => 5,
                             _ => 0,
                         };  
 
@@ -397,10 +413,10 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                         for event in event_pump.poll_iter() {
                             let key = match event {
                                 Event::KeyDown {keycode: Some(Keycode::A), ..} |
-                                    Event::KeyDown {keycode: Some(Keycode::Left), ..} => 5,
+                                    Event::KeyDown {keycode: Some(Keycode::Left), ..} => 8,
                                 Event::KeyDown {keycode: Some(Keycode::E), ..} => 6,
                                 Event::KeyDown {keycode: Some(Keycode::W), ..} |
-                                    Event::KeyDown {keycode: Some(Keycode::Up), ..} => 7,
+                                    Event::KeyDown {keycode: Some(Keycode::Up), ..} => 5,
                                 _ => 0,
                             };  
 
