@@ -84,7 +84,6 @@ fn main() -> io::Result<()>{
                     _ => {},
                 }
             }
-            println!("pc out: {:x}", &chip8.pc);
             disassemble(&mut chip8, &mut canvas, &mut texture, &mut event_pump);
             chip8.pc += 2;
             print!("\n"); 

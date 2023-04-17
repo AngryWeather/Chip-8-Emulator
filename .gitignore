@@ -1,8 +1,2 @@
 /target
-rockto.ch8
-RPS.ch8
-snake.ch8
-superpong.ch8
-test_opcode.ch8
-ultimatetictactoe.ch8
-IBM Logo.ch8
+*.ch8
