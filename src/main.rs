@@ -13,6 +13,8 @@ use sdl2::render::Texture;
 use sdl2::sys::KeySym;
 use sdl2::sys::SDL_QuitEvent;
 use sdl2::video::Window;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::env;
 use std::io;
 use std::fs::File;
@@ -79,6 +81,12 @@ fn main() -> io::Result<()>{
         // let delay_in_nanos = 
 
         while (chip8.pc) < 0x200 + buffer.len() as u16{
+            let keys: HashSet<Scancode> = event_pump
+                .keyboard_state()
+                .pressed_scancodes()
+                .collect();
+            
+            println!("keys: {:?}", keys);
             
             let now = SystemTime::now();
 
@@ -88,17 +96,23 @@ fn main() -> io::Result<()>{
                     _ => {},
                 }
             }
-            disassemble(&mut chip8, &mut canvas, &mut texture, &mut event_pump);
+            disassemble(&mut chip8, &mut canvas, &mut texture, &mut event_pump, &keys);
             chip8.pc += 2;
             print!("\n"); 
             let last_time = now.elapsed().unwrap().as_secs_f32();
             accumulator += last_time;
             println!("time: {:?}", accumulator);
             
-            ::std::thread::sleep(std::time::Duration::new(0, accumulator as u32 * 60));
+            ::std::thread::sleep(std::time::Duration::new(0, accumulator as u32));
+            println!("DELAY: {}", &chip8.delay);
+
+            // if chip8.delay > 0 {
+            //     chip8.delay -= 1;
+            // } 
             
+
             if accumulator >=  delay_time {
-                chip8.delay -= 1;
+                // chip8.delay -= 1;
                 accumulator -= delay_time;
             }
             
@@ -143,8 +157,32 @@ fn get_codes(chip8_mem: [u8; 4096], pc: usize) -> (u8, u8) {
     (code0, code1)
 }
 
+fn get_key_map() -> HashMap<Scancode, u8> {
+    let mut key_map: HashMap<Scancode, u8> = HashMap::new();
 
-fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mut Texture, event_pump: &mut EventPump) {
+    key_map.insert(Scancode::Num1, 0x00);
+    key_map.insert(Scancode::Num2, 0x1);
+    key_map.insert(Scancode::Num3, 0x2);
+    key_map.insert(Scancode::Num4, 0x3);
+    key_map.insert(Scancode::Q, 0x4);
+    key_map.insert(Scancode::W, 0x5);
+    key_map.insert(Scancode::E, 0x6);
+    key_map.insert(Scancode::R, 0x7);
+    key_map.insert(Scancode::A, 0x8);
+    key_map.insert(Scancode::S, 0x9);
+    key_map.insert(Scancode::D, 0xa);
+    key_map.insert(Scancode::F, 0xb);
+    key_map.insert(Scancode::Z, 0xc);
+    key_map.insert(Scancode::X, 0xd);
+    key_map.insert(Scancode::C, 0xe);
+    key_map.insert(Scancode::V, 0xf);
+    
+    key_map
+    
+}
+
+
+fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mut Texture, event_pump: &mut EventPump, keys: &HashSet<Scancode>) {
     let pc = chip8.pc as usize;
     let (code0, code1) = get_codes(chip8.memory, pc);
     let first_nib = code0 >> 4;
@@ -192,7 +230,7 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
         0x03 => {
             print!("{:-10} V{:01x},#${:02x}", "SKIP.EQ", code0 & 0xf, code1);
 
-            if chip8.v[code0 as usize & 0xf as usize] == code1 {
+            if chip8.v[(code0 & 0xf) as usize] == code1 {
                 chip8.pc += 2;
             }
         },
@@ -295,7 +333,7 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             }
         }
         0x09 => {
-            print!("{:-10} V{:01x},V{:01x}", "SKIP.NE", code0 & 0xf, code1 & 0x0f);
+            print!("{:-10} V{:01x},V{:01x}", "SKIP.NE", code0 & 0xf, code1 >> 4);
             if chip8.v[(code0 & 0xf) as usize] != chip8.v[(code1 >> 4) as usize] {
                 chip8.pc += 2;
             }
@@ -338,12 +376,14 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     let (r, g, b) = if pixel == 1 {sdl2::pixels::Color::WHITE.rgb()} 
                         else {sdl2::pixels::Color::BLACK.rgb()};
                     
-                    let index = (v_y as usize * (width * 3) as usize) as usize + ( v_x * 3) as usize;
-                    
-                    // if (chip8.screen[index] == pixel * 255) {
-                    //     chip8.v[0xf] = 1;
-                    // }
+                    let index = (v_y as usize * (width * 3) as usize) + ( v_x * 3) as usize;
 
+                    if chip8.screen[index] == 255 && (pixel == 0) {
+                        chip8.v[0xf] = 1;
+                    } else {
+                        chip8.v[0xf] = 0;
+                    }
+                    
                     chip8.screen[index] ^= r;
                     chip8.screen[index + 1] ^= g;
                     chip8.screen[index + 2] ^= b;
@@ -382,20 +422,14 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 },
                 0xa1 => {
                     print!("{:-10} V{:01x}", "SKIPKEY.N", code0 & 0x0f);
-                    for event in event_pump.poll_iter() {
-                        let key: u8 = match event {
-                            Event::KeyDown {keycode: Some(Keycode::A), ..} |
-                                Event::KeyDown {keycode: Some(Keycode::Left), ..} => 8,
-                            Event::KeyDown {keycode: Some(Keycode::E), ..} => 6,
-                            Event::KeyDown {keycode: Some(Keycode::W), ..} |
-                                Event::KeyDown {keycode: Some(Keycode::Up), ..} => 5,
-                            _ => 0,
-                        };  
 
-                    if key != chip8.v[(code0 & 0xf) as usize] {
-                        chip8.pc += 2;
-                    }
-                    }
+                    // for key in &keys {
+
+                    // }
+                    // if key != chip8.v[(code0 & 0xf) as usize] {
+                    //     chip8.pc += 2;
+                    // }
+                    
                 },
                 _ => print!("Unknown e")
             }
@@ -453,7 +487,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     let tens = num % 10;
                     num /= 10;
                     let hundreds = num % 10;
-                    
+
+
                     chip8.memory[chip8.i as usize] = hundreds;
                     chip8.memory[(chip8.i + 1) as usize] = tens;
                     chip8.memory[(chip8.i + 2) as usize] = ones;
