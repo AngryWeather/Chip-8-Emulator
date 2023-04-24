@@ -167,10 +167,10 @@ fn get_key_map() -> HashMap<Scancode, u8> {
     key_map.insert(Scancode::Q, 0x4);
     key_map.insert(Scancode::W, 0x5);
     key_map.insert(Scancode::E, 0x6);
-    key_map.insert(Scancode::R, 0x7);
-    key_map.insert(Scancode::A, 0x8);
-    key_map.insert(Scancode::S, 0x9);
-    key_map.insert(Scancode::D, 0xa);
+    key_map.insert(Scancode::A, 0x7);
+    key_map.insert(Scancode::S, 0x8);
+    key_map.insert(Scancode::D, 0x9);
+    key_map.insert(Scancode::R, 0xa);
     key_map.insert(Scancode::F, 0xb);
     key_map.insert(Scancode::Z, 0xc);
     key_map.insert(Scancode::X, 0xd);
