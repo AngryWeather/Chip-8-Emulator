@@ -160,7 +160,7 @@ fn get_codes(chip8_mem: [u8; 4096], pc: usize) -> (u8, u8) {
 fn get_key_map() -> HashMap<Scancode, u8> {
     let mut key_map: HashMap<Scancode, u8> = HashMap::new();
 
-    key_map.insert(Scancode::Num1, 0x00);
+    key_map.insert(Scancode::Num1, 0x0);
     key_map.insert(Scancode::Num2, 0x1);
     key_map.insert(Scancode::Num3, 0x2);
     key_map.insert(Scancode::Num4, 0x3);
@@ -205,7 +205,7 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     chip8.pc = chip8.stack.pop().expect("chip8.stack should not be empty");
                     chip8.sp -= 1;
                     println!();
-                    // chip8.pc -= 2;
+                    // chip8.pc += 2;
                     // disassemble(chip8, canvas, texture);
                 },
                 _ => print!("Unknown 0"),
@@ -358,10 +358,10 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             print!("{:-10} V{:01x}, V{:01x}, #${}", "SPRITE", code0 & 0xf, code1 >> 4, code1 & 0xf);
             let addr = chip8.memory[chip8.i as usize];
 
-            let width: u8 = 64;
+            let width: u16 = 64;
             let height: u8 = 32;
-            let mut v_x = chip8.v[(code0 & 0xf) as usize] % 64;
-            let mut v_y = chip8.v[(code1 >> 4) as usize] % 32;
+            let mut v_x = chip8.v[(code0 & 0xf) as usize] % width as u8;
+            let mut v_y = chip8.v[(code1 >> 4) as usize] % height;
             let num_of_bytes = code1 & 0xf;
 
             for x in chip8.i..chip8.i + num_of_bytes as u16 {
@@ -376,8 +376,9 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     let (r, g, b) = if pixel == 1 {sdl2::pixels::Color::WHITE.rgb()} 
                         else {sdl2::pixels::Color::BLACK.rgb()};
                     
-                    let index = (v_y as usize * (width * 3) as usize) + ( v_x * 3) as usize;
-
+                    let index = ((v_x * 3)) as usize + (v_y as usize * (width * 3) as usize);
+                    println!("VX: {v_x}, VY: {v_y}, INDEX {index}");
+            
                     if chip8.screen[index] == 255 && (pixel == 0) {
                         chip8.v[0xf] = 1;
                     } else {
@@ -388,11 +389,11 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     chip8.screen[index + 1] ^= g;
                     chip8.screen[index + 2] ^= b;
                     
-                    v_x += 1;
+                    v_x = (v_x + 1) % width as u8;
                 }
 
-                    v_x = chip8.v[(code0 & 0xf) as usize] % 64;
-                    v_y += 1;
+                    v_x = chip8.v[(code0 & 0xf) as usize] % width as u8;
+                    v_y = (v_y + 1) % height;
                 }
                 
                 canvas.clear();
@@ -423,9 +424,22 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 0xa1 => {
                     print!("{:-10} V{:01x}", "SKIPKEY.N", code0 & 0x0f);
 
-                    // for key in &keys {
+                    let key_map = get_key_map();
 
-                    // }
+                    // let scancode_pressed = key_map.entry().find(|&val| *val == (chip8.v[(code0 & 0xf) as usize]));
+                    let scancode_requested = key_map.iter()
+                        .find_map(|(key, val)| if *val == (chip8.v[(code0 & 0xf) as usize]) {Some(key)} else {None});
+                    
+                    println!("Scan: {:?}", &scancode_requested.unwrap());
+                    
+                    if !keys.contains(scancode_requested.unwrap()) {
+                        chip8.pc += 2;
+                    }
+
+                    // let contains = keys.contains(chip8.v[(code0 & 0xf) as usize]);
+                    // let does_contain = key_map.values().any(|&val| val == (chip8.v[(code0 & 0xf) as usize]));
+                    // println!("CONTAINS: {:?}", does_contain);
+                    
                     // if key != chip8.v[(code0 & 0xf) as usize] {
                     //     chip8.pc += 2;
                     // }
