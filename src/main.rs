@@ -408,20 +408,10 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
 
                     let key_map = get_key_map();
 
-                    // let scancode_pressed = key_map.entry().find(|&val| *val == (chip8.v[(code0 & 0xf) as usize]));
                     let scancode_requested = key_map.iter()
                         .find_map(|(key, val)| if *val == (chip8.v[(code0 & 0xf) as usize]) {Some(key)} else {None});
                     
                     println!("Scan: {:?}", &scancode_requested.unwrap());
-                    // for event in event_pump.poll_iter() {
-                    //     let key: u8 = match event {
-                    //         Event::KeyDown {keycode: Some(Keycode::A), ..} |
-                    //             Event::KeyDown {keycode: Some(Keycode::Left), ..} => 8,
-                    //         // Event::KeyDown {keycode: Some(Keycode::E), ..} => 6,
-                    //         Event::KeyDown {keycode: Some(Keycode::W), ..} |
-                    //             Event::KeyDown {keycode: Some(Keycode::Up), ..} => 5,
-                    //         _ => 0,
-                    //     };  
 
                     if keys.contains(scancode_requested.unwrap()) {
                         chip8.pc += 2;
@@ -433,7 +423,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
 
                     let key_map = get_key_map();
 
-                    // let scancode_pressed = key_map.entry().find(|&val| *val == (chip8.v[(code0 & 0xf) as usize]));
                     let scancode_requested = key_map.iter()
                         .find_map(|(key, val)| if *val == (chip8.v[(code0 & 0xf) as usize]) {Some(key)} else {None});
                     
@@ -443,14 +432,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                         chip8.pc += 2;
                     }
 
-                    // let contains = keys.contains(chip8.v[(code0 & 0xf) as usize]);
-                    // let does_contain = key_map.values().any(|&val| val == (chip8.v[(code0 & 0xf) as usize]));
-                    // println!("CONTAINS: {:?}", does_contain);
-                    
-                    // if key != chip8.v[(code0 & 0xf) as usize] {
-                    //     chip8.pc += 2;
-                    // }
-                    
                 },
                 _ => print!("Unknown e")
             }
