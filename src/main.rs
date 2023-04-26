@@ -104,6 +104,7 @@ fn main() -> io::Result<()>{
             println!("time: {:?}", accumulator);
             
             ::std::thread::sleep(std::time::Duration::new(0, accumulator as u32));
+            // std::thread::sleep(std::time::Duration::new(1, 0));
             println!("DELAY: {}", &chip8.delay);
 
             // if chip8.delay > 0 {
@@ -278,23 +279,27 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 },
                 0x4 => {
                     print!("{:-10} V{:01x},V{:01x}", "ADD.", code0 & 0xf, code1 & 0x0f);
+
+                    chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize].overflowing_add(chip8.v[(code1 >> 4) as usize]).0;
+
                     if chip8.v[(code0 & 0x0f) as usize].overflowing_add(code1 >> 4).1 {
                         chip8.v[0xf] = 1;                        
                     } else {
                         chip8.v[0xf] = 0;
                     }
                     
-                    chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize].overflowing_add(chip8.v[(code1 >> 4) as usize]).0;
                 },
                 0x5 => {
                     print!("{:-10} V{:01x},V{:01x}", "SUB.", code0 & 0xf, code1 & 0x0f);
-                    if chip8.v[(code0 & 0xf) as usize] >  chip8.v[(code1 >> 4) as usize] {
+
+                    if chip8.v[(code0 & 0xf) as usize] > chip8.v[(code1 >> 4) as usize] {
                         chip8.v[0xf] = 1;
                     } else {
                         chip8.v[0xf] = 0;
                     }
                     
-                   chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize].overflowing_sub(chip8.v[(code1 >> 4) as usize]).0;
+                    // chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize] - chip8.v[(code1 >> 4) as usize];
+                    chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize].overflowing_sub(chip8.v[(code1 >> 4) as usize]).0;
                 },
                 0x6 => {
                     print!("{:-10} V{:01x},V{:01x}", "SHR.", code0 & 0xf, code1 & 0x0f);
@@ -309,6 +314,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 0x7 => {
                     print!("{:-10} V{:01x},V{:01x}", "SUBN.", code0 & 0xf, code1 & 0x0f);
                     
+                    chip8.v[(code0 & 0xf) as usize] = chip8.v[(code1 >> 4) as usize].overflowing_sub(chip8.v[(code0 & 0xf) as usize]).0;
+
                     if chip8.v[(code1 >> 4) as usize] > chip8.v[(code0 & 0xf) as usize] {
                         chip8.v[0xf] = 1;
                     } else {
@@ -316,7 +323,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     }
                     
                     // chip8.v[(code0 & 0xf) as usize] = chip8.v[(code1 >> 4) as usize] - chip8.v[(code0 & 0xf) as usize];
-                    chip8.v[(code0 & 0xf) as usize] = chip8.v[(code1 >> 4) as usize].overflowing_sub(chip8.v[(code0 & 0xf) as usize]).0;
                 },
                 0xe => {
                     print!("{:-10} V{:01x},V{:01x}", "SHL.", code0 & 0xf, code1 & 0x0f);
@@ -377,9 +383,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                         else {sdl2::pixels::Color::BLACK.rgb()};
                     
                     let index = ((v_x * 3)) as usize + (v_y as usize * (width * 3) as usize);
-                    println!("VX: {v_x}, VY: {v_y}, INDEX {index}");
             
-                    if chip8.screen[index] == 255 && (pixel == 0) {
+                    if (chip8.screen[index] == 255) && (pixel == 1) {
                         chip8.v[0xf] = 1;
                     } else {
                         chip8.v[0xf] = 0;
