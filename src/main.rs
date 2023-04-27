@@ -307,12 +307,13 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 0x6 => {
                     print!("{:-10} V{:01x},V{:01x}", "SHR.", code0 & 0xf, code1 & 0x0f);
                     if (chip8.v[(code0 & 0xf) as usize] & 0x1) == 1 {
+                        chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize] >> 1; 
                         chip8.v[0xf] = 1;
                     } else {
+                        chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize] >> 1; 
                         chip8.v[0xf] = 0;
                     }
                     
-                    chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize] >> 1; 
                 },
                 0x7 => {
                     print!("{:-10} V{:01x},V{:01x}", "SUBN.", code0 & 0xf, code1 & 0x0f);
