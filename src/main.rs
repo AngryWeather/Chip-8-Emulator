@@ -161,21 +161,21 @@ fn get_codes(chip8_mem: [u8; 4096], pc: usize) -> (u8, u8) {
 fn get_key_map() -> HashMap<Scancode, u8> {
     let mut key_map: HashMap<Scancode, u8> = HashMap::new();
 
-    key_map.insert(Scancode::Num1, 0x0);
-    key_map.insert(Scancode::Num2, 0x1);
-    key_map.insert(Scancode::Num3, 0x2);
-    key_map.insert(Scancode::Num4, 0x3);
+    key_map.insert(Scancode::Num1, 0x1);
+    key_map.insert(Scancode::Num2, 0x2);
+    key_map.insert(Scancode::Num3, 0x3);
+    key_map.insert(Scancode::Num4, 0xc);
     key_map.insert(Scancode::Q, 0x4);
     key_map.insert(Scancode::W, 0x5);
     key_map.insert(Scancode::E, 0x6);
     key_map.insert(Scancode::A, 0x7);
     key_map.insert(Scancode::S, 0x8);
     key_map.insert(Scancode::D, 0x9);
-    key_map.insert(Scancode::R, 0xa);
-    key_map.insert(Scancode::F, 0xb);
-    key_map.insert(Scancode::Z, 0xc);
-    key_map.insert(Scancode::X, 0xd);
-    key_map.insert(Scancode::C, 0xe);
+    key_map.insert(Scancode::R, 0xd);
+    key_map.insert(Scancode::F, 0xe);
+    key_map.insert(Scancode::Z, 0xa);
+    key_map.insert(Scancode::X, 0x0);
+    key_map.insert(Scancode::C, 0xb);
     key_map.insert(Scancode::V, 0xf);
     
     key_map
