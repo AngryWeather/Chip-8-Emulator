@@ -511,7 +511,31 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                                     Event::KeyDown {scancode: Some(Scancode::S), ..} => {
                                         chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::S).unwrap();
                                         break 'running;
-                                    }
+                                    },
+                                    Event::KeyDown {scancode: Some(Scancode::D), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::D).unwrap();
+                                        break 'running; 
+                                    },
+                                    Event::KeyDown {scancode: Some(Scancode::F), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::F).unwrap();
+                                        break 'running;
+                                    },
+                                    Event::KeyDown {scancode: Some(Scancode::Z), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::Z).unwrap();
+                                        break 'running;
+                                    },
+                                    Event::KeyDown {scancode: Some(Scancode::X), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::X).unwrap();
+                                        break 'running;
+                                    },
+                                    Event::KeyDown {scancode: Some(Scancode::C), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::C).unwrap();
+                                        break 'running;
+                                    },
+                                    Event::KeyDown {scancode: Some(Scancode::V), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::V).unwrap();
+                                        break 'running;
+                                    },
                                     _ => continue, 
                                 };
                                 
