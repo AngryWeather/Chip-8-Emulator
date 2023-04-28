@@ -500,7 +500,18 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                                         chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::E).unwrap();
                                         break 'running;
                                     },
-                                    
+                                    Event::KeyDown {scancode: Some(Scancode::R), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::R).unwrap();
+                                        break 'running; 
+                                    },
+                                    Event::KeyDown {scancode: Some(Scancode::A), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::A).unwrap();
+                                        break 'running;
+                                    },
+                                    Event::KeyDown {scancode: Some(Scancode::S), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::S).unwrap();
+                                        break 'running;
+                                    }
                                     _ => continue, 
                                 };
                                 
