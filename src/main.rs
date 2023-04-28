@@ -377,6 +377,7 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             let mut v_x = chip8.v[(code0 & 0xf) as usize] % width as u8;
             let mut v_y = chip8.v[(code1 >> 4) as usize] % height;
             let num_of_bytes = code1 & 0xf;
+            chip8.v[0xf] = 0;
 
             for x in chip8.i..chip8.i + num_of_bytes as u16 {
                 let mut byte = chip8.memory[x as usize];
@@ -394,10 +395,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             
                     if (chip8.screen[index] == 255) && (pixel == 1) {
                         chip8.v[0xf] = 1;
-                    } else {
-                        chip8.v[0xf] = 0;
                     }
-                    
+
                     chip8.screen[index] ^= r;
                     chip8.screen[index + 1] ^= g;
                     chip8.screen[index + 2] ^= b;
