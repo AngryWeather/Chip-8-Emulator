@@ -107,9 +107,9 @@ fn main() -> io::Result<()>{
             // std::thread::sleep(std::time::Duration::new(1, 0));
             println!("DELAY: {}", &chip8.delay);
 
-            // if chip8.delay > 0 {
-            //     chip8.delay -= 1;
-            // } 
+            if chip8.delay > 0 {
+                chip8.delay -= 1;
+            } 
             
 
             if accumulator >=  delay_time {
@@ -454,25 +454,58 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 },
                 0x0a => {
                     print!("{:-10} V{:01x}", "KEY", code0 & 0x0f);
+                    let key_map = get_key_map();
+
+                    let scancode_requested = key_map.iter()
+                        .find_map(|(key, val)| if *val == (chip8.v[(code0 & 0xf) as usize]) {Some(key)} else {None});
 
                     'running: loop {
-                        for event in event_pump.poll_iter() {
-                            let key = match event {
-                                Event::KeyDown {keycode: Some(Keycode::A), ..} |
-                                    Event::KeyDown {keycode: Some(Keycode::Left), ..} => 8,
-                                Event::KeyDown {keycode: Some(Keycode::E), ..} => 6,
-                                Event::KeyDown {keycode: Some(Keycode::W), ..} |
-                                    Event::KeyDown {keycode: Some(Keycode::Up), ..} => 5,
-                                _ => 0,
-                            };  
-
-                            if key != 0 {
-                                println!("\n\nKEY: {:x}\n", key);
-                                chip8.v[(code0 & 0xf) as usize] = key;
-                                break 'running;
+                        // for event in event_pump.poll_iter() {
+                        //     let key = match event {
+                        //         Event::KeyDown {keycode: Some(Keycode::A), ..} |
+                        //             Event::KeyDown {keycode: Some(Keycode::Left), ..} => 8,
+                        //         Event::KeyDown {keycode: Some(Keycode::E), ..} => 6,
+                        //         Event::KeyDown {keycode: Some(Keycode::W), ..} |
+                        //             Event::KeyDown {keycode: Some(Keycode::Up), ..} => 5,
+                        //         _ => 0,
+                        //     };  
+                            
+                            for event in event_pump.poll_iter() {
+                                let key = match event {
+                                    Event::KeyDown {scancode: Some(Scancode::Num1), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::Num1).unwrap();
+                                        break 'running;
+                                    },
+                                    Event::KeyDown {scancode: Some(Scancode::Num2), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::Num2).unwrap();
+                                        break 'running;
+                                    } 
+                                    Event::KeyDown {scancode: Some(Scancode::Num3), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::Num3).unwrap();
+                                        break 'running;
+                                    },
+                                    Event::KeyDown {scancode: Some(Scancode::Num4), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::Num4).unwrap();
+                                        break 'running;
+                                    },
+                                    Event::KeyDown {scancode: Some(Scancode::Q), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::Q).unwrap();
+                                        break 'running;
+                                    },
+                                    Event::KeyDown {scancode: Some(Scancode::W), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::W).unwrap();
+                                        break 'running; 
+                                    },
+                                    Event::KeyDown {scancode: Some(Scancode::E), ..} => {
+                                        chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::E).unwrap();
+                                        break 'running;
+                                    },
+                                    
+                                    _ => continue, 
+                                };
+                                
                             }
                         }
-                    }
                 }, 
                 0x15 => {
                     print!("{:-10} DELAY,V{:01x}", "MOV", code0 & 0x0f);
