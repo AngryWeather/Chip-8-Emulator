@@ -81,6 +81,7 @@ fn main() -> io::Result<()>{
         // let delay_in_nanos = 
 
         while (chip8.pc) < 0x200 + buffer.len() as u16{
+            let now = SystemTime::now();
             let keys: HashSet<Scancode> = event_pump
                 .keyboard_state()
                 .pressed_scancodes()
@@ -88,7 +89,6 @@ fn main() -> io::Result<()>{
             
             println!("keys: {:?}", keys);
             
-            let now = SystemTime::now();
 
             for event in event_pump.poll_iter() {
                 match event {
@@ -96,26 +96,21 @@ fn main() -> io::Result<()>{
                     _ => {},
                 }
             }
-            disassemble(&mut chip8, &mut canvas, &mut texture, &mut event_pump, &keys);
+            let last_time = now.elapsed().unwrap().as_nanos();
+            println!("NANOS: {last_time}");
+            // let mut i = last_time;
+            // ::std::thread::sleep(std::time::Duration::new(0, last_time as u32));
+            disassemble(&mut chip8, &mut canvas, &mut texture, &mut event_pump, &keys, &last_time);
             chip8.pc += 2;
             print!("\n"); 
-            let last_time = now.elapsed().unwrap().as_secs_f32();
-            accumulator += last_time;
             println!("time: {:?}", accumulator);
             
-            ::std::thread::sleep(std::time::Duration::new(0, accumulator as u32));
             // std::thread::sleep(std::time::Duration::new(1, 0));
             println!("DELAY: {}", &chip8.delay);
 
             if chip8.delay > 0 {
                 chip8.delay -= 1;
             } 
-            
-
-            if accumulator >=  delay_time {
-                // chip8.delay -= 1;
-                accumulator -= delay_time;
-            }
             
         }
     }
@@ -183,7 +178,9 @@ fn get_key_map() -> HashMap<Scancode, u8> {
 }
 
 
-fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mut Texture, event_pump: &mut EventPump, keys: &HashSet<Scancode>) {
+fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mut Texture, event_pump: &mut EventPump, keys: &HashSet<Scancode>, time: &u128) {
+    ::std::thread::sleep(std::time::Duration::new(0, *time as u32));
+
     let pc = chip8.pc as usize;
     let (code0, code1) = get_codes(chip8.memory, pc);
     let first_nib = code0 >> 4;
