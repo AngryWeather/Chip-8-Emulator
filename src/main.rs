@@ -57,12 +57,21 @@ fn main() -> io::Result<()>{
         let f_size = reader.seek(SeekFrom::End(0))?;
         reader.rewind()?;
         reader.read_to_end(&mut buffer)?;
+        let mut font: [u8; 0x200] = [0; 0x200];
         
         // chip8-8 puts programs in memory at 0x200
         let mut chip8 = Chip8State::new([0;1024*4], [0; 64 * 32 * 3], 
             [0; 16], 0x0, 0x0, 0x0);    
 
         chip8.memory[0x200 .. (0x200 + &buffer.len())].copy_from_slice(&buffer[..]);
+        // chip8.memory[0x0 .. (0x0 + &buffer.len()].copy_from_slice(&buffer[..]);
+        // println!("LEN {:?}", &buffer.len());
+        println!("MEMORY {:?}", &chip8.memory);
+        chip8.font[0x0 .. 0x50].copy_from_slice(&buffer[0x0..0x50]);
+        println!("FONT {:?}", font);
+
+        // println!("BUFFER {:?}", &buffer[0x0..0x200].len());
+
 
     'running: loop {
         canvas.clear();
@@ -120,6 +129,7 @@ struct Chip8State {
     sp: u16,
     pc: u16,
     delay: u8,
+    font: [u8; 0x200],
     sound: u8,
     memory: [u8; 1024 * 4],
     screen: [u8; 64 * 32 * 3],
@@ -134,6 +144,7 @@ impl Chip8State {
             sp: 0,
             pc: 0x200,
             v,
+            font: [0; 0x200],
             i: 0x0,
             delay,
             sound,
@@ -544,14 +555,23 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     chip8.delay = chip8.v[(code0 & 0xf) as usize];
                     println!("\n\nDELAY: {}", chip8.delay);
                 },
-                0x18 => print!("{:-10} SOUND, V{:01x}", "MOV", code0 * 0x0f),
+                0x18 => print!(" SOUND, V MOV"),
                 0x1e => {
                     print!("{:-10} I,V{:01x}", "ADI", code0 & 0x0f);
                     chip8.i = chip8.i + chip8.v[(code0 & 0xf) as usize] as u16;
                 },
                 0x29 => {
                     print!("{:-10} I,V{:01x}", "SPRITECHAR", code0 & 0x0f);
-                    chip8.i = chip8.v[(code0 & 0xf) as usize] as u16;
+                    // chip8.i = chip8.v[(code0 & 0xf) as usize] as u16;
+                    let v_x = chip8.v[(code0 & 0xf) as usize];
+                    // println!("vx: {v_x}");
+                    // chip8.i = chip8.font[(v_x * 5) as usize] as u16;
+                    // chip8.i = chip8.memory[(0x200 as usize + (v_x * 5) as usize) as usize] as u16;
+                    chip8.i = 0x200 + (v_x * 5) as u16;
+                    // println!("FONT {:?}", &chip8.font);
+                    // println!("I: {:?}", &chip8.i);
+                    // println!("Memory: {:?}", &chip8.memory);
+                    // println!("Mem of {:?}", &chip8.memory[chip8.i as usize]);
                 },
                 0x33 => {
                     print!("{:-10} (I),V{:01x}", "MOVBCD", code0 & 0x0f);
