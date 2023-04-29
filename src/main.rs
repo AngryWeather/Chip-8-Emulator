@@ -381,7 +381,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             chip8.v[0xf] = 0;
 
             for b in chip8.i..chip8.i + num_of_bytes as u16 {
-                let mut byte = chip8.memory[b as usize];
+                // let mut byte = chip8.memory[b as usize];
+                let mut byte = if chip8.i >= 0x200 {chip8.memory[b as usize]} else {chip8.font[b as usize]};
                 let mut i: usize = 0;
 
                 while i < 8 {
@@ -567,7 +568,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     // println!("vx: {v_x}");
                     // chip8.i = chip8.font[(v_x * 5) as usize] as u16;
                     // chip8.i = chip8.memory[(0x200 as usize + (v_x * 5) as usize) as usize] as u16;
-                    chip8.i = 0x200 + (v_x * 5) as u16;
+                    // chip8.i = 0x200 + (v_x * 5) as u16;
+                    chip8.i = (v_x * 5) as u16;
                     // println!("FONT {:?}", &chip8.font);
                     // println!("I: {:?}", &chip8.i);
                     // println!("Memory: {:?}", &chip8.memory);
@@ -594,12 +596,14 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     chip8.memory[chip8.i as usize ..= (chip8.i as usize + (code0 & 0xf) as usize)].copy_from_slice(
                         &chip8.v[0..=(code0 & 0xf) as usize]
                     );
+                    chip8.i += (code0 & 0xf) as u16 + 1;
                 },
                 0x65 => {
                     print!("{:-10} V0-V{:01x},(I)", "MOVM", code0 & 0x0f);
                     chip8.v[0..=(code0 & 0xf) as usize].copy_from_slice(
                         &chip8.memory[chip8.i as usize ..= (chip8.i as usize + (code0 & 0xf) as usize)]
-                    )
+                    );
+                    chip8.i += (code0 & 0xf) as u16 + 1;
                 },
                 _ => print!("Unknown f")
             }
