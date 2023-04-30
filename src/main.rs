@@ -309,6 +309,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 },
                 0x6 => {
                     print!("{:-10} V{:01x},V{:01x}", "SHR.", code0 & 0xf, code1 & 0x0f);
+                    chip8.v[(code0 & 0xf) as usize] = chip8.v[(code1 >> 4) as usize];
+
                     if (chip8.v[(code0 & 0xf) as usize] & 0x1) == 1 {
                         chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize] >> 1; 
                         chip8.v[0xf] = 1;
@@ -333,6 +335,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 },
                 0xe => {
                     print!("{:-10} V{:01x},V{:01x}", "SHL.", code0 & 0xf, code1 & 0x0f);
+                    
+                    chip8.v[(code0 & 0xf) as usize] = chip8.v[(code1 >> 4) as usize];
                     
                     if ((chip8.v[(code0 & 0xf) as usize]) >> 7) == 1 {
                         chip8.v[(code0 & 0xf) as usize] <<= 1;
@@ -381,6 +385,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             chip8.v[0xf] = 0;
 
             for b in chip8.i..chip8.i + num_of_bytes as u16 {
+                println!("I: {}", &chip8.i);
+                println!("b: {b}");
                 // let mut byte = chip8.memory[b as usize];
                 let mut byte = if chip8.i >= 0x200 {chip8.memory[b as usize]} else {chip8.font[b as usize]};
                 let mut i: usize = 0;
@@ -564,13 +570,15 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 0x29 => {
                     print!("{:-10} I,V{:01x}", "SPRITECHAR", code0 & 0x0f);
                     // chip8.i = chip8.v[(code0 & 0xf) as usize] as u16;
+                    println!("V: {:?}", &chip8.v);
                     let v_x = chip8.v[(code0 & 0xf) as usize];
-                    // println!("vx: {v_x}");
+                    println!("vx: {v_x}");
                     // chip8.i = chip8.font[(v_x * 5) as usize] as u16;
                     // chip8.i = chip8.memory[(0x200 as usize + (v_x * 5) as usize) as usize] as u16;
                     // chip8.i = 0x200 + (v_x * 5) as u16;
                     chip8.i = (v_x * 5) as u16;
-                    // println!("FONT {:?}", &chip8.font);
+                    println!("I: {:?}", &chip8.i);
+                    println!("FONT {:?}", &chip8.font);
                     // println!("I: {:?}", &chip8.i);
                     // println!("Memory: {:?}", &chip8.memory);
                     // println!("Mem of {:?}", &chip8.memory[chip8.i as usize]);
