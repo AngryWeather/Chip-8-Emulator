@@ -66,9 +66,25 @@ fn main() -> io::Result<()>{
         chip8.memory[0x200 .. (0x200 + &buffer.len())].copy_from_slice(&buffer[..]);
         // chip8.memory[0x0 .. (0x0 + &buffer.len()].copy_from_slice(&buffer[..]);
         // println!("LEN {:?}", &buffer.len());
-        println!("MEMORY {:?}", &chip8.memory);
-        chip8.font[0x0 .. 0x50].copy_from_slice(&buffer[0x0..0x50]);
-        println!("FONT {:?}", font);
+        // chip8.font[0x0 .. 0x50].copy_from_slice(&buffer[0x0..0x50]);
+        chip8.font = [
+            0xf0, 0x90, 0x90, 0x90, 0xf0, // 0
+            0x20, 0x60, 0x20, 0x20, 0x70, // 1
+            0xf0, 0x10, 0xf0, 0x80, 0xf0, // 2
+            0xf0, 0x10, 0xf0, 0x10, 0xf0, // 3
+            0x90, 0x90, 0xf0, 0x10, 0x10, // 4
+            0xf0, 0x80, 0xf0, 0x10, 0xf0, // 5
+            0xf0, 0x80, 0xf0, 0x90, 0xf0, // 6
+            0xf0, 0x10, 0x20, 0x40, 0x40, // 7
+            0xf0, 0x90, 0xf0, 0x90, 0xf0, // 8
+            0xf0, 0x90, 0xf0, 0x10, 0xf0, // 9
+            0xf0, 0x90, 0xf0, 0x90, 0x90, // A
+            0xe0, 0x90, 0xe0, 0x90, 0xe0, // B
+            0xf0, 0x80, 0x80, 0x80, 0xf0, // C
+            0xe0, 0x90, 0x90, 0x90, 0xe0, // D
+            0xf0, 0x80, 0xf0, 0x80, 0xf0, // E
+            0xf0, 0x80, 0xf0, 0x80, 0x80, // F
+        ];
 
         // println!("BUFFER {:?}", &buffer[0x0..0x200].len());
 
@@ -129,7 +145,7 @@ struct Chip8State {
     sp: u16,
     pc: u16,
     delay: u8,
-    font: [u8; 0x200],
+    font: [u8; 0x50],
     sound: u8,
     memory: [u8; 1024 * 4],
     screen: [u8; 64 * 32 * 3],
@@ -144,7 +160,7 @@ impl Chip8State {
             sp: 0,
             pc: 0x200,
             v,
-            font: [0; 0x200],
+            font: [0; 0x50],
             i: 0x0,
             delay,
             sound,
@@ -376,6 +392,7 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             print!("{:-10} V{:01x}, V{:01x}, #${}", "SPRITE", code0 & 0xf, code1 >> 4, code1 & 0xf);
             let addr = chip8.memory[chip8.i as usize];
 
+            println!("MEM: {:x?}", &chip8.memory);
             let width: u16 = 64;
             let height: u8 = 32;
             let mut v_x = chip8.v[(code0 & 0xf) as usize] % width as u8;
@@ -385,8 +402,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             chip8.v[0xf] = 0;
 
             for b in chip8.i..chip8.i + num_of_bytes as u16 {
-                println!("I: {}", &chip8.i);
-                println!("b: {b}");
                 // let mut byte = chip8.memory[b as usize];
                 let mut byte = if chip8.i >= 0x200 {chip8.memory[b as usize]} else {chip8.font[b as usize]};
                 let mut i: usize = 0;
