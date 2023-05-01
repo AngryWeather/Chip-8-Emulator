@@ -64,9 +64,6 @@ fn main() -> io::Result<()>{
             [0; 16], 0x0, 0x0, 0x0);    
 
         chip8.memory[0x200 .. (0x200 + &buffer.len())].copy_from_slice(&buffer[..]);
-        // chip8.memory[0x0 .. (0x0 + &buffer.len()].copy_from_slice(&buffer[..]);
-        // println!("LEN {:?}", &buffer.len());
-        // chip8.font[0x0 .. 0x50].copy_from_slice(&buffer[0x0..0x50]);
         chip8.font = [
             0xf0, 0x90, 0x90, 0x90, 0xf0, // 0
             0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -86,9 +83,9 @@ fn main() -> io::Result<()>{
             0xf0, 0x80, 0xf0, 0x80, 0x80, // F
         ];
 
-        // println!("BUFFER {:?}", &buffer[0x0..0x200].len());
-
-
+        chip8.memory[0x0 .. 0x50].copy_from_slice(&chip8.font);
+        println!("BUFFER Len: {:x?}", &buffer.len());
+        
     'running: loop {
         canvas.clear();
         // for event in event_pump.poll_iter() {
@@ -202,7 +199,7 @@ fn get_key_map() -> HashMap<Scancode, u8> {
 
 
 fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mut Texture, event_pump: &mut EventPump, keys: &HashSet<Scancode>, time: &u128) {
-    ::std::thread::sleep(std::time::Duration::new(0, *time as u32));
+    ::std::thread::sleep(std::time::Duration::new(0, 1666667 as u32));
 
     let pc = chip8.pc as usize;
     let (code0, code1) = get_codes(chip8.memory, pc);
@@ -392,7 +389,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             print!("{:-10} V{:01x}, V{:01x}, #${}", "SPRITE", code0 & 0xf, code1 >> 4, code1 & 0xf);
             let addr = chip8.memory[chip8.i as usize];
 
-            println!("MEM: {:x?}", &chip8.memory);
             let width: u16 = 64;
             let height: u8 = 32;
             let mut v_x = chip8.v[(code0 & 0xf) as usize] % width as u8;
@@ -402,12 +398,12 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             chip8.v[0xf] = 0;
 
             for b in chip8.i..chip8.i + num_of_bytes as u16 {
-                // let mut byte = chip8.memory[b as usize];
-                let mut byte = if chip8.i >= 0x200 {chip8.memory[b as usize]} else {chip8.font[b as usize]};
+                let mut byte = chip8.memory[b as usize];
+                // let mut byte = if chip8.i >= 0x200 {chip8.memory[b as usize]} else {chip8.font[b as usize]};
                 let mut i: usize = 0;
 
                 while i < 8 {
-                    let pixel = (byte & 0x80) >> 7;
+                    let pixel = byte >> 7;
                     byte = byte << 1;
                     i += 1;
 
@@ -427,7 +423,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     v_x = v_x + 1; 
                     
                     if v_x as u16 > width - 1 {
-                        println!("Vx break: {v_x}");
                         break;
                     }
                 }
@@ -490,16 +485,7 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                         .find_map(|(key, val)| if *val == (chip8.v[(code0 & 0xf) as usize]) {Some(key)} else {None});
 
                     'running: loop {
-                        // for event in event_pump.poll_iter() {
-                        //     let key = match event {
-                        //         Event::KeyDown {keycode: Some(Keycode::A), ..} |
-                        //             Event::KeyDown {keycode: Some(Keycode::Left), ..} => 8,
-                        //         Event::KeyDown {keycode: Some(Keycode::E), ..} => 6,
-                        //         Event::KeyDown {keycode: Some(Keycode::W), ..} |
-                        //             Event::KeyDown {keycode: Some(Keycode::Up), ..} => 5,
-                        //         _ => 0,
-                        //     };  
-                            
+
                             for event in event_pump.poll_iter() {
                                 let key = match event {
                                     Event::KeyDown {scancode: Some(Scancode::Num1), ..} => {
@@ -568,7 +554,10 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                                     },
                                     _ => continue, 
                                 };
-                                
+                            }
+                            if chip8.delay > 0 {
+                                chip8.delay -= 1;
+                                println!("DELAY {}", &chip8.delay);
                             }
                         }
                 }, 
@@ -583,20 +572,8 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     chip8.i = chip8.i + chip8.v[(code0 & 0xf) as usize] as u16;
                 },
                 0x29 => {
-                    print!("{:-10} I,V{:01x}", "SPRITECHAR", code0 & 0x0f);
-                    // chip8.i = chip8.v[(code0 & 0xf) as usize] as u16;
-                    println!("V: {:?}", &chip8.v);
                     let v_x = chip8.v[(code0 & 0xf) as usize];
-                    println!("vx: {v_x}");
-                    // chip8.i = chip8.font[(v_x * 5) as usize] as u16;
-                    // chip8.i = chip8.memory[(0x200 as usize + (v_x * 5) as usize) as usize] as u16;
-                    // chip8.i = 0x200 + (v_x * 5) as u16;
                     chip8.i = (v_x * 5) as u16;
-                    println!("I: {:?}", &chip8.i);
-                    println!("FONT {:?}", &chip8.font);
-                    // println!("I: {:?}", &chip8.i);
-                    // println!("Memory: {:?}", &chip8.memory);
-                    // println!("Mem of {:?}", &chip8.memory[chip8.i as usize]);
                 },
                 0x33 => {
                     print!("{:-10} (I),V{:01x}", "MOVBCD", code0 & 0x0f);
