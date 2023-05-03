@@ -1,17 +1,11 @@
 extern crate sdl2;
 use rand::Rng;
-use rand::distributions::DistString;
-use rand::thread_rng;
 use sdl2::EventPump;
 use sdl2::event::Event;
-use sdl2::event::WindowEvent;
-use sdl2::keyboard::Keycode;
 use sdl2::keyboard::Scancode;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::render::Canvas;
 use sdl2::render::Texture;
-use sdl2::sys::KeySym;
-use sdl2::sys::SDL_QuitEvent;
 use sdl2::video::Window;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -22,9 +16,6 @@ use std::io::BufReader;
 use std::io::Read;
 use std::io::SeekFrom;
 use std::io::Seek;
-use std::ops::AddAssign;
-use std::time::Instant;
-use std::time::SystemTime;
 
 fn main() -> io::Result<()>{
 
@@ -54,14 +45,12 @@ fn main() -> io::Result<()>{
         let mut reader = BufReader::new(f);
         let mut buffer: Vec<u8> = Vec::new();
         
-        let f_size = reader.seek(SeekFrom::End(0))?;
+        reader.seek(SeekFrom::End(0))?;
         reader.rewind()?;
         reader.read_to_end(&mut buffer)?;
-        let mut font: [u8; 0x200] = [0; 0x200];
-        
         // chip8-8 puts programs in memory at 0x200
         let mut chip8 = Chip8State::new([0;1024*4], [0; 64 * 32 * 3], 
-            [0; 16], 0x0, 0x0, 0x0);    
+            [0; 16], 0x0);    
 
         chip8.memory[0x200 .. (0x200 + &buffer.len())].copy_from_slice(&buffer[..]);
         chip8.font = [
@@ -88,22 +77,8 @@ fn main() -> io::Result<()>{
         
     'running: loop {
         canvas.clear();
-        // for event in event_pump.poll_iter() {
-        //     // if event {  WindowEvent::Close};
-
-            
-        //     match event {
-        //         Event::Quit{..} => WindowEvent::Close,
-        //         _ => WindowEvent::Shown,
-        //     };
-        // }
-        let delta = 0; 
-        let mut accumulator: f32 = 0.0;
-        const delay_time: f32 = 16.7;
-        // let delay_in_nanos = 
 
         while (chip8.pc) < 0x200 + buffer.len() as u16{
-            let now = SystemTime::now();
             let keys: HashSet<Scancode> = event_pump
                 .keyboard_state()
                 .pressed_scancodes()
@@ -115,21 +90,15 @@ fn main() -> io::Result<()>{
                     _ => {},
                 }
             }
-            let last_time = now.elapsed().unwrap().as_nanos();
-            println!("NANOS: {last_time}");
-            // let mut i = last_time;
-            // ::std::thread::sleep(std::time::Duration::new(0, last_time as u32));
-            disassemble(&mut chip8, &mut canvas, &mut texture, &mut event_pump, &keys, &last_time);
+
+            disassemble(&mut chip8, &mut canvas, &mut texture, &mut event_pump, &keys);
             chip8.pc += 2;
             print!("\n"); 
             
-            // std::thread::sleep(std::time::Duration::new(1, 0));
-            println!("DELAY: {}", &chip8.delay);
-
             if chip8.delay > 0 {
                 chip8.delay -= 1;
-            } 
-            
+            }
+
         }
     }
 
@@ -143,7 +112,6 @@ struct Chip8State {
     pc: u16,
     delay: u8,
     font: [u8; 0x50],
-    sound: u8,
     memory: [u8; 1024 * 4],
     screen: [u8; 64 * 32 * 3],
     stack: Vec<u16>,
@@ -151,7 +119,7 @@ struct Chip8State {
 
 impl Chip8State {
     fn new(memory: [u8; 1024 * 4], screen:  [u8; 64 * 32 * 3], 
-        v: [u8;16], i: u16, delay: u8, sound: u8) -> Self {Chip8State {
+        v: [u8;16], delay: u8) -> Self {Chip8State {
             memory,
             screen,
             sp: 0,
@@ -160,7 +128,6 @@ impl Chip8State {
             font: [0; 0x50],
             i: 0x0,
             delay,
-            sound,
             stack: Vec::with_capacity(16),
         }
     }
@@ -198,7 +165,7 @@ fn get_key_map() -> HashMap<Scancode, u8> {
 }
 
 
-fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mut Texture, event_pump: &mut EventPump, keys: &HashSet<Scancode>, time: &u128) {
+fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mut Texture, event_pump: &mut EventPump, keys: &HashSet<Scancode>) {
     ::std::thread::sleep(std::time::Duration::new(0, 1666667 as u32));
 
     let pc = chip8.pc as usize;
@@ -222,8 +189,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     print!("{:-10}", "RTS");
                     chip8.pc = chip8.stack.pop().expect("chip8.stack should not be empty");
                     chip8.sp -= 1;
-                    // chip8.pc += 2;
-                    // disassemble(chip8, canvas, texture);
                 },
                 _ => print!("Unknown 0"),
             }
@@ -232,7 +197,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             print!("{:-10} ${:01x}{:02x}", "JUMP", code0 & 0xf, code1);
             chip8.pc = ((code0 & 0xf) as u16) << 8 | code1 as u16;
             chip8.pc -= 2;
-            // disassemble(chip8, canvas, texture, event_pump);
         },
         0x02 => {
             print!("{:-10} ${:01x}{:02x}", "CALL", code0 & 0xf, code1);
@@ -241,7 +205,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             let addr = ((code0 & 0xf) as u16) << 8 | code1 as u16;
             chip8.pc = addr;
             chip8.pc -= 2;
-            // disassemble(chip8, canvas, texture, event_pump);
         },
         0x03 => {
             print!("{:-10} V{:01x},#${:02x}", "SKIP.EQ", code0 & 0xf, code1);
@@ -268,7 +231,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
         },
         0x07 => {
             print!("{:-10} V{:01x},#{:02x}", "ADI", code0 & 0xf, code1);
-            // chip8.v[(code0 & 0x0f) as usize] = chip8.v[(code0 & 0x0f) as usize] + code1;
             chip8.v[(code0 & 0x0f) as usize] = chip8.v[(code0 & 0x0f) as usize].overflowing_add(code1).0;
         },
         0x08 => {
@@ -304,8 +266,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                         chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize].overflowing_add(chip8.v[(code1 >> 4) as usize]).0;
                         chip8.v[0xf] = 0;
                     }
-                    
-                    // chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize].overflowing_add(chip8.v[(code1 >> 4) as usize]).0;
                 },
                 0x5 => {
                     print!("{:-10} V{:01x},V{:01x}", "SUB.", code0 & 0xf, code1 & 0x0f);
@@ -317,8 +277,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                         chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize].overflowing_sub(chip8.v[(code1 >> 4) as usize]).0;
                         chip8.v[0xf] = 0;
                     }
-                    
-                    // chip8.v[(code0 & 0xf) as usize] = chip8.v[(code0 & 0xf) as usize] - chip8.v[(code1 >> 4) as usize];
                 },
                 0x6 => {
                     print!("{:-10} V{:01x},V{:01x}", "SHR.", code0 & 0xf, code1 & 0x0f);
@@ -343,8 +301,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     } else {
                         chip8.v[0xf] = 0;
                     }
-                    
-                    // chip8.v[(code0 & 0xf) as usize] = chip8.v[(code1 >> 4) as usize] - chip8.v[(code0 & 0xf) as usize];
                 },
                 0xe => {
                     print!("{:-10} V{:01x},V{:01x}", "SHL.", code0 & 0xf, code1 & 0x0f);
@@ -378,7 +334,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             print!("{:-10} I,#${:01x}{:02x}(V0)", "JUMP", code0 & 0xf, code1);
             chip8.pc = (((code0 & 0xf) as u16) << 8 | code1 as u16) + chip8.v[0] as u16;
             chip8.pc -= 2;
-            // disassemble(chip8, canvas, texture, event_pump);
         },
         0x0c => {
             print!("{:-10} V{:01x}, #${:02x}", "RNDMSK", code0 & 0xf, code1);
@@ -386,20 +341,22 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             chip8.v[(code0 & 0xf) as usize] = random_byte & code1;
         },
         0x0d => {
-            print!("{:-10} V{:01x}, V{:01x}, #${}", "SPRITE", code0 & 0xf, code1 >> 4, code1 & 0xf);
-            let addr = chip8.memory[chip8.i as usize];
+            let mut accumulator = 60.0;
 
+            while accumulator > 0.0 {
+                accumulator -= 1.0 / 60.0;
+            }
+
+            print!("{:-10} V{:01x}, V{:01x}, #${}", "SPRITE", code0 & 0xf, code1 >> 4, code1 & 0xf);
             let width: u16 = 64;
             let height: u8 = 32;
             let mut v_x = chip8.v[(code0 & 0xf) as usize] % width as u8;
             let mut v_y = chip8.v[(code1 >> 4) as usize] % height;
-            // let mut x = v_x;
             let num_of_bytes = code1 & 0xf;
             chip8.v[0xf] = 0;
 
             for b in chip8.i..chip8.i + num_of_bytes as u16 {
                 let mut byte = chip8.memory[b as usize];
-                // let mut byte = if chip8.i >= 0x200 {chip8.memory[b as usize]} else {chip8.font[b as usize]};
                 let mut i: usize = 0;
 
                 while i < 8 {
@@ -428,7 +385,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 }
 
                     v_x = chip8.v[(code0 & 0xf) as usize] % width as u8;
-                    // v_y = (v_y + 1) % height;
                     v_y += 1;
                     if v_y > (height - 1) {
                         break;
@@ -481,13 +437,10 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     print!("{:-10} V{:01x}", "KEY", code0 & 0x0f);
                     let key_map = get_key_map();
 
-                    let scancode_requested = key_map.iter()
-                        .find_map(|(key, val)| if *val == (chip8.v[(code0 & 0xf) as usize]) {Some(key)} else {None});
-
                     'running: loop {
 
                             for event in event_pump.poll_iter() {
-                                let key = match event {
+                                match event {
                                     Event::KeyDown {scancode: Some(Scancode::Num1), ..} => {
                                         chip8.v[(code0 & 0xf) as usize] = *key_map.get(&Scancode::Num1).unwrap();
                                         break 'running;
@@ -564,7 +517,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                 0x15 => {
                     print!("{:-10} DELAY,V{:01x}", "MOV", code0 & 0x0f);
                     chip8.delay = chip8.v[(code0 & 0xf) as usize];
-                    println!("\n\nDELAY: {}", chip8.delay);
                 },
                 0x18 => print!(" SOUND, V MOV"),
                 0x1e => {
@@ -585,7 +537,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
                     let tens = num % 10;
                     num /= 10;
                     let hundreds = num % 10;
-
 
                     chip8.memory[chip8.i as usize] = hundreds;
                     chip8.memory[(chip8.i + 1) as usize] = tens;
