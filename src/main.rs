@@ -77,6 +77,7 @@ fn main() -> io::Result<()>{
         
     'running: loop {
         canvas.clear();
+        let mut tickrate = 15;
 
         while (chip8.pc) < 0x200 + buffer.len() as u16{
             let keys: HashSet<Scancode> = event_pump
@@ -90,11 +91,16 @@ fn main() -> io::Result<()>{
                     _ => {},
                 }
             }
-
-            disassemble(&mut chip8, &mut canvas, &mut texture, &mut event_pump, &keys);
-            chip8.pc += 2;
-            print!("\n"); 
+            if tickrate == 0 {
+                disassemble(&mut chip8, &mut canvas, &mut texture, &mut event_pump, &keys);
+                chip8.pc += 2;
+                print!("\n"); 
+                tickrate = 15;
+            }
             
+            // println!("tickrate {tickrate}");
+            tickrate -= 1;
+
             if chip8.delay > 0 {
                 chip8.delay -= 1;
             }
@@ -166,7 +172,7 @@ fn get_key_map() -> HashMap<Scancode, u8> {
 
 
 fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mut Texture, event_pump: &mut EventPump, keys: &HashSet<Scancode>) {
-    ::std::thread::sleep(std::time::Duration::new(0, 1666667 as u32));
+    // ::std::thread::sleep(std::time::Duration::new(0, 1666667 as u32));
 
     let pc = chip8.pc as usize;
     let (code0, code1) = get_codes(chip8.memory, pc);
@@ -341,11 +347,6 @@ fn disassemble(chip8: &mut Chip8State, canvas: &mut Canvas<Window>, texture: &mu
             chip8.v[(code0 & 0xf) as usize] = random_byte & code1;
         },
         0x0d => {
-            let mut accumulator = 60.0;
-
-            while accumulator > 0.0 {
-                accumulator -= 1.0 / 60.0;
-            }
 
             print!("{:-10} V{:01x}, V{:01x}, #${}", "SPRITE", code0 & 0xf, code1 >> 4, code1 & 0xf);
             let width: u16 = 64;
