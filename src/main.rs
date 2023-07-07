@@ -31,7 +31,7 @@ fn main() -> io::Result<()>{
         let mut canvas = window.into_canvas().build().unwrap();
 
         let creator = canvas.texture_creator();
-        canvas.set_scale(10.0, 10.0).unwrap();
+        canvas.set_scale(20.0, 20.0).unwrap();
         let mut texture = creator
         .create_texture_target(PixelFormatEnum::RGB24, 64, 32).unwrap();
 
