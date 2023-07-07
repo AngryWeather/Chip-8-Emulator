@@ -73,7 +73,6 @@ fn main() -> io::Result<()>{
         ];
 
         chip8.memory[0x0 .. 0x50].copy_from_slice(&chip8.font);
-        println!("BUFFER Len: {:x?}", &buffer.len());
         
     'running: loop {
         canvas.clear();
