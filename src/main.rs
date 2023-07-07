@@ -22,7 +22,7 @@ fn main() -> io::Result<()>{
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("chip8-emulator",640, 320)
+    let window = video_subsystem.window("chip8-emulator",64 * 20, 32 * 20)
         .position_centered()
         .build()
         .unwrap();
@@ -77,7 +77,7 @@ fn main() -> io::Result<()>{
         
     'running: loop {
         canvas.clear();
-        let mut tickrate = 15;
+        let mut tickrate = 7;
 
         while (chip8.pc) < 0x200 + buffer.len() as u16{
             let keys: HashSet<Scancode> = event_pump
@@ -92,13 +92,13 @@ fn main() -> io::Result<()>{
                 }
             }
             if tickrate == 0 {
+                ::std::thread::sleep(std::time::Duration::new(0, 1666667 as u32));
                 disassemble(&mut chip8, &mut canvas, &mut texture, &mut event_pump, &keys);
                 chip8.pc += 2;
                 print!("\n"); 
-                tickrate = 15;
+                tickrate = 7;
             }
             
-            // println!("tickrate {tickrate}");
             tickrate -= 1;
 
             if chip8.delay > 0 {
